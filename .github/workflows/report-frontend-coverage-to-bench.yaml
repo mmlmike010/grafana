@@ -70,7 +70,7 @@ jobs:
           cat coverage-summary.json
 
       - name: Setup Grafana Bench
-        uses: grafana/grafana-bench/.github/actions/setup-grafana-bench@c681398158d5ba840b7493cb6a087e69f44f67a7
+        uses: grafana/grafana-bench/.github/actions/setup-grafana-bench@dff56e128adc69bfad829253125775b96efb9e09
         with:
           version: 'v1.0.6'
 

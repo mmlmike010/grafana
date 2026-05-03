@@ -139,14 +139,14 @@ Build a specific plugin: `yarn workspace @grafana-plugins/<name> dev`
 ### Prerequisites
 
 - **Node.js v24.x** (see `.nvmrc` for exact version). Use `nvm install` / `nvm use` to match.
-- **Go 1.25.7** (see `go.mod`). Pre-installed in the VM.
+- **Go 1.25.9** (see `go.mod`). Pre-installed in the VM.
 - **Yarn 4.11.0** via corepack (bundled in `.yarn/releases/`). Run `corepack enable` if `yarn` is not found.
 - **GCC** required for CGo/SQLite compilation of the backend.
 
 ### Running services
 
 - **Backend**: `make run` — builds and starts Grafana backend with hot-reload (air) on `localhost:3000`. Default login: `admin`/`admin`. First build takes ~3 minutes due to debug symbols (`-gcflags all=-N -l`); subsequent hot-reload rebuilds are faster.
-- **Frontend**: `yarn start` — starts webpack dev server that watches for changes. The backend proxies to it. First compile takes ~45s.
+- **Frontend**: `yarn start` — starts webpack dev server that watches for changes. The backend proxies to it. First run builds ~16 plugin workspaces (~50s) then compiles the main app (~37s); total ~90s. Subsequent rebuilds are fast.
 - No external databases required — Grafana uses embedded SQLite by default.
 
 ### Testing gotchas

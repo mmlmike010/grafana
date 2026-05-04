@@ -16590,6 +16590,7 @@
       "sample-graph-aria-label": "Sample dashboard metric graph",
       "sample-graph-title": "Live sample",
       "sample-graph-trend": "+28% over last hour",
+      "sample-graph-value": "46 req/s",
       "subtitle": "Turn metrics, logs, and traces into dashboards your team can use right away.",
       "title": "Build your first observability dashboard"
     }

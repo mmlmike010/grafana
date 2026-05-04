@@ -87,7 +87,9 @@ export const WelcomeBanner = () => {
         </div>
         <Sparkline width={320} height={112} sparkline={sampleSparkline} config={sampleSparklineConfig} theme={theme} />
         <div className={styles.previewFooter}>
-          <span className={styles.previewValue}>46 req/s</span>
+          <span className={styles.previewValue}>
+            <Trans i18nKey="welcome.welcome-banner.sample-graph-value">46 req/s</Trans>
+          </span>
           <span className={styles.previewTrend}>
             <Trans i18nKey="welcome.welcome-banner.sample-graph-trend">+28% over last hour</Trans>
           </span>

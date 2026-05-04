@@ -1,6 +1,8 @@
 ---
-name: github-mmlmike010-fork
-description: Ensure GitHub context, issues, and pull request work targets the mmlmike010/grafana fork. Use for any GitHub-related task, including issues, PRs, commits, searches, or repository context.
+name: github-fieldsphere-fork
+description: >-
+  Targets GitHub work at mmlmike010/grafana fork — issues, PRs, gh, MCP.
+  Use for any GitHub-related task in this repo.
 ---
 
 # GitHub fork targeting: mmlmike010/grafana

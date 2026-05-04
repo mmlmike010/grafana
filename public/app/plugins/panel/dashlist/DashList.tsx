@@ -4,7 +4,7 @@ import { useThrottle } from 'react-use';
 
 import { type InterpolateFunction, type PanelProps, textUtil } from '@grafana/data';
 import { t } from '@grafana/i18n';
-import { ScrollContainer, Box, Text, EmptyState } from '@grafana/ui';
+import { ScrollContainer, Box, Text, EmptyState, LinkButton } from '@grafana/ui';
 import { getConfig } from 'app/core/config';
 import impressionSrv from 'app/core/services/impression_srv';
 import { useDashboardLocationInfo } from 'app/features/search/hooks/useDashboardLocationInfo';
@@ -27,6 +27,11 @@ interface DashboardGroup {
   dashboards: Dashboard[];
 }
 
+async function hasAnyDashboard() {
+  const result = await getGrafanaSearcher().search({ kind: ['dashboard'], limit: 1 });
+  return result.totalRows > 0 || result.view.length > 0;
+}
+
 async function fetchDashboards(options: Options, replaceVars: InterpolateFunction) {
   const searcher = getGrafanaSearcher();
   let starredDashboards: Promise<QueryResponse | void> = Promise.resolve();
@@ -47,7 +52,7 @@ async function fetchDashboards(options: Options, replaceVars: InterpolateFunctio
   }
 
   if (options.showSearch) {
-    const uid = options.folderUID === '' ? 'general' : options.folderUID;
+    const uid = options.folderUID ? options.folderUID : 'general';
     const params: SearchQuery = {
       limit: options.maxItems,
       query: replaceVars(options.query, {}, 'text'),
@@ -111,6 +116,7 @@ const collator = new Intl.Collator();
 
 export function DashList(props: PanelProps<Options>) {
   const [dashboards, setDashboards] = useState(new Map<string, Dashboard>());
+  const [hasDashboards, setHasDashboards] = useState(true);
 
   const throttledRenderCount = useThrottle(props.renderCounter, 5000);
 
@@ -119,6 +125,10 @@ export function DashList(props: PanelProps<Options>) {
       setDashboards(dashes);
     });
   }, [props.options, props.replaceVariables, throttledRenderCount]);
+
+  useEffect(() => {
+    hasAnyDashboard().then(setHasDashboards);
+  }, [throttledRenderCount]);
 
   const { foldersByUid } = useDashboardLocationInfo(props.options.showFolderNames && dashboards.size > 0);
 
@@ -200,7 +210,10 @@ export function DashList(props: PanelProps<Options>) {
     </ul>
   );
 
-  const showEmptyState = dashboardGroups.every(({ show }) => !show);
+  const visibleDashboardGroups = dashboardGroups.filter(({ show }) => show);
+  const showEmptyState = visibleDashboardGroups.length === 0;
+  const showCreateDashboardCTA =
+    !showEmptyState && !hasDashboards && visibleDashboardGroups.every(({ dashboards }) => dashboards.length === 0);
 
   return (
     <ScrollContainer minHeight="100%">
@@ -211,9 +224,27 @@ export function DashList(props: PanelProps<Options>) {
           message={t('panel.dashlist.empty-state-message', 'No dashboard groups configured')}
         />
       )}
+      {showCreateDashboardCTA && (
+        <EmptyState
+          hideImage
+          variant="call-to-action"
+          message={t('panel.dashlist.no-dashboards-message', "You haven't created any dashboards yet")}
+          button={
+            <LinkButton href="dashboard/new" icon="plus" size="lg">
+              {t('panel.dashlist.create-dashboard', 'Create your first dashboard')}
+            </LinkButton>
+          }
+        >
+          {t(
+            'panel.dashlist.no-dashboards-description',
+            'Start with a blank canvas, then add panels for the metrics, logs, and traces you care about.'
+          )}
+        </EmptyState>
+      )}
       {dashboardGroups.map(
         ({ show, header, dashboards }, i) =>
-          show && (
+          show &&
+          dashboards.length > 0 && (
             <Box marginBottom={2} paddingTop={0.5} key={`dash-group-${i}`}>
               {showHeadings && (
                 <Box marginRight={1} paddingX={1} paddingY={0.25}>

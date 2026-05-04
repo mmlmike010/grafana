@@ -72,11 +72,7 @@ export const WelcomeBanner = () => {
           </LinkButton>
         </Stack>
       </div>
-      <div
-        className={styles.preview}
-        role="img"
-        aria-label={t('welcome.welcome-banner.sample-graph-aria-label', 'Sample dashboard metric graph')}
-      >
+      <div className={styles.preview}>
         <div className={styles.previewHeader}>
           <span>
             <Trans i18nKey="welcome.welcome-banner.sample-graph-title">Live sample</Trans>
@@ -85,7 +81,18 @@ export const WelcomeBanner = () => {
             <Trans i18nKey="welcome.welcome-banner.learn-dashboards">Learn dashboards</Trans>
           </TextLink>
         </div>
-        <Sparkline width={320} height={112} sparkline={sampleSparkline} config={sampleSparklineConfig} theme={theme} />
+        <div
+          role="img"
+          aria-label={t('welcome.welcome-banner.sample-graph-aria-label', 'Sample dashboard metric graph')}
+        >
+          <Sparkline
+            width={320}
+            height={112}
+            sparkline={sampleSparkline}
+            config={sampleSparklineConfig}
+            theme={theme}
+          />
+        </div>
         <div className={styles.previewFooter}>
           <span className={styles.previewValue}>
             <Trans i18nKey="welcome.welcome-banner.sample-graph-value">46 req/s</Trans>

@@ -163,9 +163,11 @@ func TestAddGettingStartedPanelToHomeDashboard(t *testing.T) {
 	assert.Equal(t, 0, simplejson.NewFromAny(panels[0]).Get("gridPos").Get("y").MustInt())
 	assert.Equal(t, 18, simplejson.NewFromAny(panels[1]).Get("gridPos").Get("y").MustInt())
 	assert.Equal(t, 18, simplejson.NewFromAny(panels[2]).Get("gridPos").Get("y").MustInt())
-	assert.Equal(t, "gettingstarted", simplejson.NewFromAny(panels[3]).Get("type").MustString())
-	assert.Equal(t, 8, simplejson.NewFromAny(panels[3]).Get("gridPos").Get("y").MustInt())
-	assert.Equal(t, 9, simplejson.NewFromAny(panels[3]).Get("gridPos").Get("h").MustInt())
+	gettingStartedPanel, ok := panels[3].(*simplejson.Json)
+	require.True(t, ok)
+	assert.Equal(t, "gettingstarted", gettingStartedPanel.Get("type").MustString())
+	assert.Equal(t, 8, gettingStartedPanel.Get("gridPos").Get("y").MustInt())
+	assert.Equal(t, 9, gettingStartedPanel.Get("gridPos").Get("h").MustInt())
 }
 
 func newTestLive(t *testing.T) *live.GrafanaLive {

@@ -244,7 +244,7 @@ export function DashList(props: PanelProps<Options>) {
       {dashboardGroups.map(
         ({ show, header, dashboards }, i) =>
           show &&
-          dashboards.length > 0 && (
+          (!showCreateDashboardCTA || dashboards.length > 0) && (
             <Box marginBottom={2} paddingTop={0.5} key={`dash-group-${i}`}>
               {showHeadings && (
                 <Box marginRight={1} paddingX={1} paddingY={0.25}>

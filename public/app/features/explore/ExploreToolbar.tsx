@@ -27,6 +27,7 @@ import { getFiscalYearStartMonth, getTimeZone } from '../profile/state/selectors
 import { ExploreTimeControls } from './ExploreTimeControls';
 import { LiveTailButton } from './LiveTailButton';
 import { ShortLinkButtonMenu } from './ShortLinkButtonMenu';
+import { SaveExploreSessionButton } from './SaveExploreSessionButton';
 import { ToolbarExtensionPoint } from './extensions/ToolbarExtensionPoint';
 import { changeDatasource } from './state/datasource';
 import { changeCorrelationHelperData } from './state/explorePane';
@@ -312,7 +313,12 @@ export function ExploreToolbar({ exploreId, onChangeTime, onContentOutlineToogle
             width={(showSmallTimePicker ? 35 : 108) + 'px'}
             data-testid={selectors.pages.Explore.toolbar.refreshPicker}
           />,
-          (!splitted || !isLeftPane) && <ShortLinkButtonMenu key="share" hideText={showSmallTimePicker} />,
+          (!splitted || !isLeftPane) && (
+            <>
+              <SaveExploreSessionButton key="save-session" hideText={showSmallTimePicker} />
+              <ShortLinkButtonMenu key="share" hideText={showSmallTimePicker} />
+            </>
+          ),
           datasourceInstance?.meta.streaming && (
             <LiveTailControls key="liveControls" exploreId={exploreId}>
               {(c) => {

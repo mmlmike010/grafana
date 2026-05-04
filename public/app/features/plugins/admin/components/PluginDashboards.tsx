@@ -3,10 +3,12 @@ import { memo, useCallback, useEffect, useState } from 'react';
 
 import { AppEvents, type PluginMeta, type DataSourceApi } from '@grafana/data';
 import { Trans } from '@grafana/i18n';
-import { getBackendSrv } from '@grafana/runtime';
 import { appEvents } from 'app/core/app_events';
 import DashboardsTable from 'app/features/datasources/components/DashboardsTable';
+import { dispatch } from 'app/store/store';
 import { type PluginDashboard } from 'app/types/plugins';
+
+import { pluginAdminApi } from '../api/pluginAdminApi';
 
 interface Props {
   plugin: PluginMeta;
@@ -16,15 +18,23 @@ interface Props {
 export const PluginDashboards = memo(function PluginDashboards({ plugin, datasource }: Props) {
   const [dashboards, setDashboards] = useState<PluginDashboard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importDashboardMutation] = pluginAdminApi.useImportPluginDashboardMutation();
+  const [deleteImportedDashboardMutation] = pluginAdminApi.useDeleteImportedPluginDashboardMutation();
 
   useEffect(() => {
     setLoading(true);
-    getBackendSrv()
-      .get(`/api/plugins/${plugin.id}/dashboards`)
-      .then((dashboards) => {
-        setDashboards(dashboards);
+    const subscription = dispatch(pluginAdminApi.endpoints.getPluginDashboards.initiate(plugin.id));
+    subscription
+      .unwrap()
+      .then((loaded) => {
+        setDashboards(loaded);
+        setLoading(false);
+      })
+      .catch(() => {
         setLoading(false);
       });
+
+    return () => subscription.unsubscribe();
   }, [plugin.id]);
 
   const importDashboard = useCallback(
@@ -45,25 +55,26 @@ export const PluginDashboards = memo(function PluginDashboards({ plugin, datasou
           : [],
       };
 
-      return getBackendSrv()
-        .post(`/api/dashboards/import`, installCmd)
-        .then((res: PluginDashboard) => {
+      return importDashboardMutation(installCmd).then((res) => {
+        if ('data' in res && res.data) {
           appEvents.emit(AppEvents.alertSuccess, ['Dashboard Imported', dash.title]);
-          extend(dash, res);
+          extend(dash, res.data);
           setDashboards((prev) => [...prev]);
-        });
+        }
+      });
     },
-    [plugin.id, datasource]
+    [plugin.id, datasource, importDashboardMutation]
   );
 
-  const remove = useCallback((dash: PluginDashboard) => {
-    getBackendSrv()
-      .delete('/api/dashboards/uid/' + dash.uid)
-      .then(() => {
+  const remove = useCallback(
+    (dash: PluginDashboard) => {
+      deleteImportedDashboardMutation({ pluginId: plugin.id, dashboardUid: dash.uid }).then(() => {
         dash.imported = false;
         setDashboards((prev) => [...prev]);
       });
-  }, []);
+    },
+    [plugin.id, deleteImportedDashboardMutation]
+  );
 
   if (loading) {
     return (

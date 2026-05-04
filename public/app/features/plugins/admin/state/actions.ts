@@ -2,12 +2,14 @@ import { createAction, createAsyncThunk, type Update } from '@reduxjs/toolkit';
 import { from, forkJoin, timeout, lastValueFrom, catchError, of } from 'rxjs';
 
 import { type PanelPlugin, type PluginError } from '@grafana/data';
-import { config, getBackendSrv, isFetchError } from '@grafana/runtime';
+import { config, isFetchError } from '@grafana/runtime';
 import { refetchPanelPluginMetas } from '@grafana/runtime/internal';
 import { importPanelPlugin } from 'app/features/plugins/importPanelPlugin';
+import { dispatch } from 'app/store/store';
 import { type StoreState, type ThunkResult } from 'app/types/store';
 
 import { clearPluginInfoInCache } from '../../loader/pluginInfoCache';
+import { pluginAdminApi } from '../api/pluginAdminApi';
 import {
   getRemotePlugins,
   getPluginErrors,
@@ -275,9 +277,8 @@ export const uninstall = createAsyncThunk<Update<CatalogPlugin, string>, string>
 export const loadPluginDashboards = createAsyncThunk(`${STATE_PREFIX}/loadPluginDashboards`, async (_, thunkApi) => {
   const state = thunkApi.getState() as StoreState;
   const dataSourceType = state.dataSources.dataSource.type;
-  const url = `api/plugins/${dataSourceType}/dashboards`;
 
-  return getBackendSrv().get(url);
+  return dispatch(pluginAdminApi.endpoints.getPluginDashboards.initiate(dataSourceType)).unwrap();
 });
 
 export const panelPluginLoaded = createAction<PanelPlugin>(`${STATE_PREFIX}/panelPluginLoaded`);

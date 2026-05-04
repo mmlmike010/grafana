@@ -22,6 +22,7 @@ import invitesReducers from 'app/features/invites/state/reducers';
 import importDashboardReducers from 'app/features/manage-dashboards/import/legacy/reducers';
 import organizationReducers from 'app/features/org/state/reducers';
 import panelsReducers from 'app/features/panel/state/reducers';
+import { pluginAdminApi } from 'app/features/plugins/admin/api/pluginAdminApi';
 import { reducer as pluginsReducer } from 'app/features/plugins/admin/state/reducer';
 import userReducers from 'app/features/profile/state/reducers';
 import serviceAccountsReducer from 'app/features/serviceaccounts/state/reducers';
@@ -56,6 +57,7 @@ const rootReducers = {
   [preferencesUserAPI.reducerPath]: preferencesUserAPI.reducer,
   [legacyUserAPI.reducerPath]: legacyUserAPI.reducer,
   plugins: pluginsReducer,
+  [pluginAdminApi.reducerPath]: pluginAdminApi.reducer,
   [alertingApi.reducerPath]: alertingApi.reducer,
   [publicDashboardApi.reducerPath]: publicDashboardApi.reducer,
   [browseDashboardsAPI.reducerPath]: browseDashboardsAPI.reducer,

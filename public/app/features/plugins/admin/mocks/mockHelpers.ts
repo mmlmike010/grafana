@@ -1,4 +1,7 @@
-import { setBackendSrv } from '@grafana/runtime';
+import { of } from 'rxjs';
+
+import { type BackendSrvRequest, setBackendSrv } from '@grafana/runtime';
+import { backendSrv } from 'app/core/services/backend_srv';
 
 import { API_ROOT, GCOM_API_ROOT } from '../constants';
 import * as permissions from '../permissions';
@@ -14,6 +17,10 @@ import {
 import catalogPluginMock from './catalogPlugin.mock';
 import localPluginMock from './localPlugin.mock';
 import remotePluginMock from './remotePlugin.mock';
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // Returns a sample mock for a CatalogPlugin plugin with the possibility to extend it
 export const getCatalogPluginMock = (overrides?: Partial<CatalogPlugin>) => ({ ...catalogPluginMock, ...overrides });
@@ -65,45 +72,116 @@ export const mockPluginApis = ({
   const remote = getRemotePluginMock(remoteOverride);
   const local = getLocalPluginMock(localOverride);
   const original = jest.requireActual('@grafana/runtime');
-  const originalBackendSrv = original.getBackendSrv();
-
-  setBackendSrv({
-    ...originalBackendSrv,
+  const base = original.getBackendSrv() ?? backendSrv;
+  // Preserve BackendSrv prototype methods (spread alone drops `get`, `post`, etc.).
+  const stub = Object.assign(Object.create(Object.getPrototypeOf(base)), base, {
     get: (path: string) => {
-      // Mock GCOM plugins (remote) if necessary
-      if (remote && path === `${GCOM_API_ROOT}/plugins`) {
-        return Promise.resolve({ items: [remote] });
+      if (path === '/api/frontend/settings') {
+        return Promise.resolve({ panels: {} });
+      }
+      const settingsGetRe = /^\/api\/plugins\/([^/]+)\/settings$/;
+      const settingsGetMatch = path.match(settingsGetRe);
+      if (settingsGetMatch) {
+        const pluginId = settingsGetMatch[1];
+        return Promise.resolve({
+          ...local,
+          id: pluginId,
+          type: local.id === pluginId ? local.type : 'datasource',
+        });
+      }
+      return base.get(path);
+    },
+    fetch: (options: BackendSrvRequest) => {
+      const path = options.url.split('?')[0];
+
+      const gcomPluginsList = `${GCOM_API_ROOT}/plugins`;
+      if (path === gcomPluginsList) {
+        return of({ data: { items: [remote] }, ok: true, status: 200 } as any);
       }
 
-      // Mock GCOM single plugin page (remote) if necessary
-      if (remote && path === `${GCOM_API_ROOT}/plugins/${remote.slug}`) {
-        return Promise.resolve(remote);
+      const gcomSingleRe = new RegExp(`^${escapeRegex(GCOM_API_ROOT)}/plugins/([^/]+)$`);
+      const gcomSingleMatch = path.match(gcomSingleRe);
+      if (gcomSingleMatch) {
+        const slug = gcomSingleMatch[1];
+        return of({ data: { ...remote, slug }, ok: true, status: 200 } as any);
       }
 
-      // Mock versions
-      if (versions && path === `${GCOM_API_ROOT}/plugins/${remote.slug}/versions`) {
-        return Promise.resolve({ items: versions });
+      const gcomVersionsRe = new RegExp(`^${escapeRegex(GCOM_API_ROOT)}/plugins/([^/]+)/versions$`);
+      const gcomVersionsMatch = path.match(gcomVersionsRe);
+      if (gcomVersionsMatch) {
+        const items = versions ?? [
+          { version: '1.0.0', createdAt: '', updatedAt: '', isCompatible: true, grafanaDependency: '>=8.0.0' },
+        ];
+        return of({ data: { items }, ok: true, status: 200 } as any);
+      }
+
+      const gcomVersionRe = new RegExp(
+        `^${escapeRegex(GCOM_API_ROOT)}/plugins/([^/]+)/versions/([^/]+)$`
+      );
+      const gcomVersionMatch = path.match(gcomVersionRe);
+      if (gcomVersionMatch) {
+        const [, slug, version] = gcomVersionMatch;
+        return of({
+          data: {
+            version,
+            createdAt: '',
+            updatedAt: '',
+            isCompatible: true,
+            grafanaDependency: '>=8.0.0',
+            angularDetected: false,
+            status: 'published',
+          },
+          ok: true,
+          status: 200,
+        } as any);
       }
 
       // Mock plugin insights - return empty insights to avoid API call errors
       if (path.includes('/insights')) {
-        return Promise.resolve({ id: 1, name: '', version: '', insights: [] });
+        return of({ data: { id: 1, name: '', version: '', insights: [] }, ok: true, status: 200 } as any);
       }
 
-      // Mock local plugin settings (installed) if necessary
-      if (local && path === `${API_ROOT}/${local.id}/settings`) {
-        return Promise.resolve(local);
+      const settingsRe = new RegExp(`^${escapeRegex(API_ROOT)}/([^/]+)/settings$`);
+      const settingsMatch = path.match(settingsRe);
+      if (settingsMatch) {
+        const pluginId = settingsMatch[1];
+        if (local && pluginId === local.id) {
+          return of({ data: local, ok: true, status: 200 } as any);
+        }
+        return of({ data: { ...local, id: pluginId }, ok: true, status: 200 } as any);
       }
 
-      // Mock local plugin listing (of necessary)
-      if (local && path === API_ROOT) {
-        return Promise.resolve([local]);
+      if (path === API_ROOT || path.startsWith(`${API_ROOT}?`)) {
+        return of({ data: [local], ok: true, status: 200 } as any);
       }
 
-      // Fall back to the original .get() in other cases
-      return originalBackendSrv.get(path);
+      // Markdown / errors / instance routes used by plugin admin RTK Query
+      if (path.endsWith('/markdown/README') || path.endsWith('/markdown/CHANGELOG')) {
+        return of({ data: '', ok: true, status: 200 } as any);
+      }
+      if (path === `${API_ROOT}/errors`) {
+        return of({ data: [], ok: true, status: 200 } as any);
+      }
+
+      if (path === '/api/instance/plugins') {
+        return of({ data: { items: [] }, ok: true, status: 200 } as any);
+      }
+      if (path === '/api/instance/provisioned-plugins') {
+        return of({ data: { items: [] }, ok: true, status: 200 } as any);
+      }
+
+      if (options.method === 'POST' && path.includes('/install')) {
+        return of({ data: {}, ok: true, status: 200 } as any);
+      }
+      if (options.method === 'POST' && path.includes('/uninstall')) {
+        return of({ data: {}, ok: true, status: 200 } as any);
+      }
+
+      return base.fetch(options);
     },
   });
+
+  setBackendSrv(stub);
 };
 
 type UserAccessTestContext = {

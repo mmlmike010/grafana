@@ -17,7 +17,7 @@ Use this skill whenever working on `.canvas.tsx` files to prevent common compile
    - `~/.cursor/skills-cursor/canvas/sdk/index.d.ts`
    - `~/.cursor/skills-cursor/canvas/sdk/ui-primitives.d.ts`
 2. Only import from `cursor/canvas`.
-3. Create or edit exactly one `.canvas.tsx` artifact for the requested deliverable.
+3. Create exactly one new `.canvas.tsx` artifact for the requested deliverable. Do not reuse or overwrite an existing canvas unless the user explicitly asks to modify that specific canvas.
 4. Run lint diagnostics on the edited canvas file and fix issues before finishing.
 
 ## Visualization-First Rules

@@ -2,14 +2,13 @@
 name: canvas-safe-tsx
 description: >-
   Create and edit Cursor canvas files with TSX-safe syntax, visualization-first
-  layout, and current SDK usage. Use when the user asks for /canvas output,
-  asks to create or modify a .canvas.tsx file, prefers visual presentation, or
-  reports canvas build/parse errors.
+  layout, and current SDK usage. Use only when the user explicitly uses /canvas
+  or asks to create or modify a .canvas.tsx file after using /canvas.
 ---
 
 # Canvas TSX Safety + Visual-First Guardrails
 
-Use this skill whenever working on `.canvas.tsx` files to prevent common compile errors, prefer visual communication, and keep output aligned with the current `cursor/canvas` SDK.
+Once invoked by `/canvas`, use this skill when working on `.canvas.tsx` files to prevent common compile errors, prefer visual communication, and keep output aligned with the current `cursor/canvas` SDK.
 
 ## Workflow
 

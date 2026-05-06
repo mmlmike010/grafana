@@ -1,0 +1,24 @@
+---
+description: >-
+  Default: implement from the plan using static analysis only; never run Go/JS
+  tests, make test/extract/build, or dev servers unless the user explicitly
+  requests verification.
+alwaysApply: true
+---
+
+# Fast Path Static Analysis
+
+When building a plan, explicitly say NOT to incorporate any of the following.
+
+When planning or implementing “fast path” / demo tasks unless the user explicitly asks for verification:
+
+Do not run go test, make test-*, or any Go test targets.
+Do not run yarn test, yarn jest, or Jest (including --no-watch / single-file runs).
+Do not run make i18n-extract or other heavy codegen/extract targets unless the user requests it.
+Do not run full yarn build, make build-*, or make run unless the user asks.
+Allowed: read-only inspection (read, grep, search), and only shell commands the user explicitly listed (e.g. git status).
+Narrow exception (optional, if you want zero ambiguity):
+“Run a test command only if the user’s message literally asks to run tests or verify with CI.”
+
+One line summary for the rule:
+“Default: implement from the plan using static analysis only; never run Go/JS tests, make test/extract/build, or dev servers unless the user explicitly requests verification.”

@@ -1,0 +1,44 @@
+---
+description: >-
+  Grafana OSS frontend stack and patterns for public/app and packages/. Use when
+  editing React/TypeScript UI, panels, features, or shared @grafana/* libraries —
+  or when the user @-mentions this rule for frontend work.
+alwaysApply: false
+---
+
+# Grafana frontend — quick agent guide
+
+The canonical deep reference is the repo root [AGENTS.md](AGENTS.md) (commands, architecture, testing). This rule is a **short orientation** so the agent reaches for the right libraries and folders first.
+
+## Stack (typical UI code)
+
+| Area | Choice |
+|------|--------|
+| UI | React function components + hooks |
+| Language | TypeScript |
+| Styling | Emotion — prefer `useStyles2` from `@grafana/ui` (match surrounding files) |
+| State / async | Redux Toolkit slices; RTK Query for API/data |
+| Design system | `@grafana/ui` components and tokens — avoid one-off styling when a component exists |
+| Data / models | `@grafana/data`, `@grafana/schema` (CUE-generated types where applicable) |
+| Runtime / config | `@grafana/runtime` (services, backend settings access patterns in-repo) |
+| Dashboard scenes | `@grafana/scenes` when working in scenes-based flows |
+| Tests | React Testing Library; run `yarn jest --no-watch <path>` or `yarn test` with `--watchAll=false` for one-shot |
+
+## Where code lives
+
+All paths below are **relative to the Grafana repository root** (same directory as `package.json` and `pkg/`, not inside `.cursor/`).
+
+- `public/app/` — SPA root; bundle entry starts at `public/app/index.ts` (bootstraps into `initApp`, etc.)
+- `public/app/features/` — feature areas (dashboard, explore, alerting, etc.)
+- `public/app/core/` — shared app services, utilities, cross-cutting UI
+- `public/app/api/` — generated HTTP API clients used by the app
+- `public/app/plugins/` — built-in plugins (many are Yarn workspaces)
+- `packages/` — shared npm workspaces: `@grafana/ui`, `@grafana/data`, `@grafana/runtime`, etc.
+
+## Conventions
+
+- Follow **existing patterns in the file and sibling components** (imports, hooks, error handling, i18n).
+- New user-visible strings: use the project i18n flow (see `make i18n-extract` in AGENTS.md); locale JSON under `public/locales/`.
+- Security: avoid unsafe HTML; sanitize or use safe components when rendering untrusted content.
+
+When in doubt, search the codebase for a similar feature and mirror its structure.

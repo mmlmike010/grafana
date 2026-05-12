@@ -111,6 +111,57 @@ func TestGetHomeDashboard(t *testing.T) {
 	}
 }
 
+func TestAddGettingStartedPanel_AdjustsPanelsForWelcomeHero(t *testing.T) {
+	httpReq, err := http.NewRequest(http.MethodGet, "", nil)
+	require.NoError(t, err)
+
+	cfg := setting.NewCfg()
+	req := &contextmodel.ReqContext{
+		Context:      &web.Context{Req: httpReq},
+		SignedInUser: &user.SignedInUser{OrgRole: org.RoleAdmin},
+	}
+
+	homeBytes, err := os.ReadFile("../../public/dashboards/home.json")
+	require.NoError(t, err)
+	dash := simplejson.MustJson(homeBytes)
+
+	hs := &HTTPServer{Cfg: cfg}
+	hs.addGettingStartedPanelToHomeDashboard(req, dash)
+
+	var welcomeBottom, gsY, gsH int64
+	for _, raw := range dash.Get("panels").MustArray() {
+		panel := simplejson.NewFromAny(raw)
+		typ := panel.Get("type").MustString("")
+		grid := panel.Get("gridPos")
+
+		top := grid.Get("y").MustInt64(0)
+		height := grid.Get("h").MustInt64(0)
+
+		switch typ {
+		case "welcome":
+			if top+height > welcomeBottom {
+				welcomeBottom = top + height
+			}
+		case "gettingstarted":
+			require.Equal(t, top, welcomeBottom, "getting started banner should anchor directly beneath the hero")
+			require.Equal(t, height, int64(9))
+			gsY, gsH = top, height
+		}
+	}
+
+	require.Greater(t, welcomeBottom, int64(0))
+
+	for _, raw := range dash.Get("panels").MustArray() {
+		panel := simplejson.NewFromAny(raw)
+		typ := panel.Get("type").MustString("")
+		if typ != "dashlist" && typ != "news" {
+			continue
+		}
+		top := panel.Get("gridPos").Get("y").MustInt64(0)
+		require.Equal(t, gsY+gsH, top, "%s should start after the getting started banner", typ)
+	}
+}
+
 func newTestLive(t *testing.T) *live.GrafanaLive {
 	cfg := setting.NewCfg()
 	cfg.AppURL = "http://localhost:3000/"

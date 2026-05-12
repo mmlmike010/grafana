@@ -758,21 +758,63 @@ func (hs *HTTPServer) addGettingStartedPanelToHomeDashboard(c *contextmodel.ReqC
 		return
 	}
 
-	panels := dash.Get("panels").MustArray()
+	const gettingStartedPanelHeight int64 = 9
+
+	rawPanels := dash.Get("panels").MustArray()
+	panels := make([]*simplejson.Json, 0, len(rawPanels)+1)
+
+	heroBottomY := int64(0)
+	for _, item := range rawPanels {
+		panel := simplejson.NewFromAny(item)
+		panels = append(panels, panel)
+
+		if panel.Get("type").MustString() != "welcome" {
+			continue
+		}
+		gy := panel.Get("gridPos").Get("y").MustInt64(0)
+		gh := panel.Get("gridPos").Get("h").MustInt64(0)
+		if bottom := gy + gh; bottom > heroBottomY {
+			heroBottomY = bottom
+		}
+	}
+
+	// Fallback if the dashboard does not declare a welcome panel (custom home.json).
+	if heroBottomY == 0 {
+		heroBottomY = 3
+	}
+
+	for _, panel := range panels {
+		if panel.Get("type").MustString() == "gettingstarted" {
+			continue
+		}
+		gp, ok := panel.CheckGet("gridPos")
+		if !ok {
+			continue
+		}
+		y := gp.Get("y").MustInt64(0)
+		if y >= heroBottomY {
+			gp.Set("y", y+gettingStartedPanelHeight)
+		}
+	}
 
 	newpanel := simplejson.NewFromAny(map[string]any{
 		"type": "gettingstarted",
 		"id":   123123,
 		"gridPos": map[string]any{
 			"x": 0,
-			"y": 3,
+			"y": heroBottomY,
 			"w": 24,
-			"h": 9,
+			"h": gettingStartedPanelHeight,
 		},
 	})
-
 	panels = append(panels, newpanel)
-	dash.Set("panels", panels)
+
+	out := make([]any, len(panels))
+	for i, panel := range panels {
+		out[i] = panel.Interface()
+	}
+
+	dash.Set("panels", out)
 }
 
 // swagger:route GET /dashboards/uid/{uid}/versions dashboards versions getDashboardVersionsByUID

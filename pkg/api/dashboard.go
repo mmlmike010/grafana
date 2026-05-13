@@ -795,7 +795,7 @@ func (hs *HTTPServer) addGettingStartedPanelToHomeDashboard(c *contextmodel.ReqC
 		},
 	})
 
-	panels = append(panels, newpanel)
+	panels = append(panels, newpanel.Interface())
 	dash.Set("panels", panels)
 }
 

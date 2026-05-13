@@ -759,15 +759,39 @@ func (hs *HTTPServer) addGettingStartedPanelToHomeDashboard(c *contextmodel.ReqC
 	}
 
 	panels := dash.Get("panels").MustArray()
+	gettingStartedPanelHeight := 9
+	gettingStartedPanelY := 3
+
+	for _, panel := range panels {
+		panelJSON := simplejson.NewFromAny(panel)
+		if panelJSON.Get("type").MustString() != "welcome" {
+			continue
+		}
+
+		gridPos := panelJSON.Get("gridPos")
+		welcomeBottom := gridPos.Get("y").MustInt() + gridPos.Get("h").MustInt()
+		if welcomeBottom > gettingStartedPanelY {
+			gettingStartedPanelY = welcomeBottom
+		}
+	}
+
+	for _, panel := range panels {
+		panelJSON := simplejson.NewFromAny(panel)
+		gridPos := panelJSON.Get("gridPos")
+		y := gridPos.Get("y").MustInt()
+		if y >= gettingStartedPanelY {
+			gridPos.Set("y", y+gettingStartedPanelHeight)
+		}
+	}
 
 	newpanel := simplejson.NewFromAny(map[string]any{
 		"type": "gettingstarted",
 		"id":   123123,
 		"gridPos": map[string]any{
 			"x": 0,
-			"y": 3,
+			"y": gettingStartedPanelY,
 			"w": 24,
-			"h": 9,
+			"h": gettingStartedPanelHeight,
 		},
 	})
 

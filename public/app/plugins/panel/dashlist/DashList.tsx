@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useThrottle } from 'react-use';
 
 import { type InterpolateFunction, type PanelProps, textUtil } from '@grafana/data';
-import { t } from '@grafana/i18n';
-import { ScrollContainer, Box, Text, EmptyState } from '@grafana/ui';
+import { Trans, t } from '@grafana/i18n';
+import { ScrollContainer, Box, Text, EmptyState, LinkButton, Stack } from '@grafana/ui';
 import { getConfig } from 'app/core/config';
 import impressionSrv from 'app/core/services/impression_srv';
 import { useDashboardLocationInfo } from 'app/features/search/hooks/useDashboardLocationInfo';
@@ -111,13 +111,29 @@ const collator = new Intl.Collator();
 
 export function DashList(props: PanelProps<Options>) {
   const [dashboards, setDashboards] = useState(new Map<string, Dashboard>());
+  const [isLoading, setIsLoading] = useState(true);
 
   const throttledRenderCount = useThrottle(props.renderCounter, 5000);
 
   useEffect(() => {
-    fetchDashboards(props.options, props.replaceVariables).then((dashes) => {
-      setDashboards(dashes);
-    });
+    let isActive = true;
+    setIsLoading(true);
+
+    fetchDashboards(props.options, props.replaceVariables)
+      .then((dashes) => {
+        if (isActive) {
+          setDashboards(dashes);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [props.options, props.replaceVariables, throttledRenderCount]);
 
   const { foldersByUid } = useDashboardLocationInfo(props.options.showFolderNames && dashboards.size > 0);
@@ -201,6 +217,10 @@ export function DashList(props: PanelProps<Options>) {
   );
 
   const showEmptyState = dashboardGroups.every(({ show }) => !show);
+  const showNoDashboardsCTA =
+    !isLoading &&
+    dashboardGroups.some(({ show }) => show) &&
+    dashboardGroups.every(({ show, dashboards }) => !show || dashboards.length === 0);
 
   return (
     <ScrollContainer minHeight="100%">
@@ -211,9 +231,30 @@ export function DashList(props: PanelProps<Options>) {
           message={t('panel.dashlist.empty-state-message', 'No dashboard groups configured')}
         />
       )}
+      {showNoDashboardsCTA && (
+        <EmptyState
+          hideImage
+          variant="call-to-action"
+          message={t('panel.dashlist.no-dashboards-message', 'No dashboards yet')}
+          button={
+            <Stack direction="row" gap={1}>
+              <LinkButton href="/dashboard/new" icon="plus">
+                <Trans i18nKey="panel.dashlist.create-dashboard">Create your first dashboard</Trans>
+              </LinkButton>
+              <LinkButton href="/dashboard/import" icon="import" variant="secondary">
+                <Trans i18nKey="panel.dashlist.import-dashboard">Import dashboard</Trans>
+              </LinkButton>
+            </Stack>
+          }
+        >
+          <Trans i18nKey="panel.dashlist.no-dashboards-description">
+            Start by creating a dashboard or importing one from a JSON file or Grafana.com.
+          </Trans>
+        </EmptyState>
+      )}
       {dashboardGroups.map(
         ({ show, header, dashboards }, i) =>
-          show && (
+          show && !showNoDashboardsCTA && (
             <Box marginBottom={2} paddingTop={0.5} key={`dash-group-${i}`}>
               {showHeadings && (
                 <Box marginRight={1} paddingX={1} paddingY={0.25}>

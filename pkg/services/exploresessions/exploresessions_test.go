@@ -144,13 +144,15 @@ func TestExploreSessionsViewerNeedsExplorePermission(t *testing.T) {
 		SignedInUser: &usr,
 	}
 
-	resp := svc.listHandler(reqCtx)
+	wrappedListHandler := svc.permissionsMiddleware(svc.listHandler, "Failed to list explore sessions")
+
+	resp := wrappedListHandler(reqCtx)
 	require.Equal(t, http.StatusUnauthorized, resp.Status())
 
 	usr.Permissions = map[int64]map[string][]string{
-		testUserID: {"datasources:explore": {}},
+		testOrgID: {"datasources:explore": {}},
 	}
-	resp2 := svc.listHandler(reqCtx)
+	resp2 := wrappedListHandler(reqCtx)
 	require.Equal(t, http.StatusOK, resp2.Status())
 }
 

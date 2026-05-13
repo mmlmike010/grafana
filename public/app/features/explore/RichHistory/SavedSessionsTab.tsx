@@ -55,7 +55,7 @@ export function SavedSessionsTab() {
 
   const openSession = (session: ExploreSessionDTO) => {
     const q = session.url.indexOf('?');
-    const search = q >= 0 ? session.url.slice(q + 1) : '';
+    const search = q >= 0 ? session.url.slice(q) : '';
     location.push({ pathname: '/explore', search });
   };
 

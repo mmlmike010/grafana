@@ -64,7 +64,11 @@ export function SaveExploreSessionButton({ hideText }: Props) {
       >
         {hideText ? undefined : <Trans i18nKey="explore.save-session.button">Save session</Trans>}
       </ToolbarButton>
-      <Modal title={t('explore.save-session.modal-title', 'Save Explore session')} isOpen={open} onDismiss={() => setOpen(false)}>
+      <Modal
+        title={t('explore.save-session.modal-title', 'Save Explore session')}
+        isOpen={open}
+        onDismiss={() => setOpen(false)}
+      >
         <Input
           placeholder={t('explore.save-session.name-placeholder', 'Session name')}
           value={name}

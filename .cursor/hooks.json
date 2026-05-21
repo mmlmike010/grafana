@@ -1,6 +1,11 @@
 {
   "version": 1,
   "hooks": {
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/plan-mode-context.sh"
+      }
+    ],
     "beforeShellExecution": [
       {
         "command": ".cursor/hooks/enforce-fieldsphere-gh.sh",

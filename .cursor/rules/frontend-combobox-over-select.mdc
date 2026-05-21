@@ -1,0 +1,30 @@
+---
+description: Prefer Combobox over deprecated @grafana/ui Select variants in Grafana app frontend code
+globs: public/app/**/*.ts, public/app/**/*.tsx
+alwaysApply: false
+---
+
+# Prefer `Combobox` over deprecated `@grafana/ui` Select
+
+In `public/app`, do **not** introduce new usages of deprecated Select exports from `@grafana/ui`:
+
+`Select`, `MultiSelect`, `AsyncSelect`, `VirtualizedSelect`, `AsyncVirtualizedSelect`, `AsyncMultiSelect`
+
+Use **`Combobox`** from `@grafana/ui` instead (see Storybook / design system docs for `Combobox`).
+
+## Exceptions
+
+- **Narrow edits**: If you only touch code next to an existing Select, you may keep behavior unchanged without a full migration.
+- **Already changing the control**: Prefer migrating that control to `Combobox` rather than expanding deprecated APIs.
+
+## Example
+
+```tsx
+// Avoid (deprecated Select family)
+import { Select } from '@grafana/ui';
+
+// Prefer
+import { Combobox } from '@grafana/ui';
+```
+
+Reference: `@grafana/ui` marks the Select variants as `@deprecated` in favor of `Combobox` (`packages/grafana-ui/src/components/Select/Select.tsx`).

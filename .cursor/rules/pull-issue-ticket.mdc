@@ -1,0 +1,41 @@
+---
+description: >-
+  Pulls work into the chat from Linear or Jira — fetch issue details, acceptance
+  criteria, and context. Use when the user pastes a ticket URL or key, asks to
+  import/load/sync an issue from Linear or Jira, or start work from a ticket.
+alwaysApply: false
+---
+
+# Pull issue from Linear or Jira
+
+Execute with MCP tools — do not ask the user to copy-paste full ticket bodies if the integration is available.
+
+## Linear
+
+1. **Resolve the issue**  
+   If the user gives an id like `TEAM-123` or a UUID, call `get_issue` on server `plugin-linear-linear` with that `id`.  
+   If they only describe a ticket, call `list_issues` with `query` / `team` / `assignee: "me"` as needed, then `get_issue` on the chosen id.
+
+2. **Optional depth**  
+   Set `includeRelations: true` when blockers/related work matter.
+
+3. **Present to the user**  
+   Summarize title, status, description, assignee, labels, and link. Propose a short implementation checklist if useful.
+
+## Jira
+
+1. **cloudId**  
+   Call `getAccessibleAtlassianResources` on server `plugin-atlassian-atlassian` when `cloudId` is unknown. If the user shared a site URL (e.g. `https://acme.atlassian.net/browse/PROJ-42`), try that hostname as `cloudId` first per tool hints.
+
+2. **Fetch the issue**  
+   Call `getJiraIssue` with `cloudId`, `issueIdOrKey` (e.g. `PROJ-42`), and `responseContentFormat: "markdown"` when you want readable text.
+
+3. **Search**  
+   Use `searchJiraIssuesUsingJql` when you need to find issues by text/metadata before fetching.
+
+4. **Present to the user**  
+   Summarize key fields, description, and acceptance criteria; note status and epic/links if returned.
+
+## MCP hygiene
+
+Before `call_mcp_tool`, read the tool descriptor JSON under the project `mcps` folder if a call fails — confirm server id, tool name, and required fields.

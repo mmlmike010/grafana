@@ -1,0 +1,18 @@
+---
+description: >-
+  Plan mode workflow. When in Plan mode or drafting an implementation plan,
+  always research the codebase with parallel codebase-reader subagents before
+  CreatePlan. Apply proactively in Plan mode.
+alwaysApply: false
+---
+
+# Plan mode
+
+Before `CreatePlan` or writing a plan:
+
+1. Decompose into 2–6 independent research scopes (by layer, feature, or directory).
+2. Fan out parallel Task subagents in **one batch**: `subagent_type: codebase-reader`, `model: composer-2.5-fast`, `readonly: true`. Each gets a one-sentence question, path hints, and thoroughness (`medium` by default).
+3. Draft the plan from reader findings — real file paths, flows, touchpoints. No guessing.
+4. Skip subagents only for trivial needle queries (one symbol/file): use Grep/Glob/Read directly.
+
+Honor repo rules (e.g. fast-path: no test/build in the plan unless the user asks).

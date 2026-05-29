@@ -98,6 +98,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     description,
     version,
     orgName,
+    orgUrl,
     popularity,
     downloads,
     typeCode,
@@ -128,6 +129,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     },
     name,
     orgName,
+    orgUrl,
     popularity,
     publishedAt,
     signature: getPluginSignature({ remote: plugin, error }),
@@ -261,6 +263,7 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     name: remote?.name || local?.name || '',
     // TODO<check if we would like to keep preferring the remote version>
     orgName: remote?.orgName || local?.info.author.name || '',
+    orgUrl: remote?.orgUrl,
     popularity: remote?.popularity || 0,
     publishedAt: remote?.createdAt || '',
     type,
@@ -364,23 +367,130 @@ export function getLatestCompatibleVersion(versions: Version[] | undefined): Ver
 
 export const isInstallControlsEnabled = () => config.pluginAdminEnabled;
 
+/**
+ * The reason an administrator is blocked (or warned) from installing a plugin.
+ * Used to drive both the user-facing install readiness surface and the
+ * `grafana_plugin_install_deflected` telemetry.
+ */
+export enum InstallReadinessBlockerReason {
+  RendererUnsupported = 'renderer-unsupported',
+  EnterpriseUnlicensed = 'enterprise-unlicensed',
+  DevBuild = 'dev-build',
+  NoPermission = 'no-permission',
+  NotPublished = 'not-published',
+  IncompatibleVersion = 'incompatible-version',
+  RemoteUnavailable = 'remote-unavailable',
+  InvalidSignature = 'invalid-signature',
+}
+
+export type InstallReadinessSignatureState = 'signed' | 'unsigned' | 'invalid' | 'internal';
+
+export interface InstallReadiness {
+  // Whether the plugin can be installed in the current Grafana instance.
+  canInstall: boolean;
+  // The (first) reason the install is blocked, when `canInstall` is false.
+  blockerReason?: InstallReadinessBlockerReason;
+  // Whether a Grafana-compatible version of the plugin exists.
+  isCompatible: boolean;
+  // The selected/latest compatible version, when one exists.
+  latestCompatibleVersion?: string;
+  // The Grafana dependency range relevant to the readiness state, when available.
+  grafanaDependency?: string;
+  // A normalized view of the plugin signature for the readiness surface.
+  signatureState: InstallReadinessSignatureState;
+}
+
+export function getInstallReadinessSignatureState(signature?: PluginSignatureStatus): InstallReadinessSignatureState {
+  switch (signature) {
+    case PluginSignatureStatus.internal:
+      return 'internal';
+    case PluginSignatureStatus.valid:
+      return 'signed';
+    case PluginSignatureStatus.invalid:
+    case PluginSignatureStatus.modified:
+      return 'invalid';
+    case PluginSignatureStatus.missing:
+    default:
+      return 'unsigned';
+  }
+}
+
+/**
+ * Returns the first applicable install-control blocker reason, or `undefined`
+ * when none apply. The set of conditions mirrors the historical
+ * `hasInstallControlWarning` behavior so existing install/update/uninstall
+ * flows remain unchanged.
+ */
+export const getInstallControlWarningReason = (
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion?: Version
+): InstallReadinessBlockerReason | undefined => {
+  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
+  const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
+  const isCompatible = Boolean(latestCompatibleVersion);
+
+  if (plugin.type === PluginType.renderer) {
+    return InstallReadinessBlockerReason.RendererUnsupported;
+  }
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) {
+    return InstallReadinessBlockerReason.EnterpriseUnlicensed;
+  }
+  if (plugin.isDev) {
+    return InstallReadinessBlockerReason.DevBuild;
+  }
+  if (!hasPermission && !isExternallyManaged) {
+    return InstallReadinessBlockerReason.NoPermission;
+  }
+  if (!plugin.isPublished) {
+    return InstallReadinessBlockerReason.NotPublished;
+  }
+  if (!isCompatible) {
+    return InstallReadinessBlockerReason.IncompatibleVersion;
+  }
+  if (!isRemotePluginsAvailable) {
+    return InstallReadinessBlockerReason.RemoteUnavailable;
+  }
+
+  return undefined;
+};
+
 export const hasInstallControlWarning = (
   plugin: CatalogPlugin,
   isRemotePluginsAvailable: boolean,
   latestCompatibleVersion?: Version
-) => {
-  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
-  const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
-  const isCompatible = Boolean(latestCompatibleVersion);
-  return (
-    plugin.type === PluginType.renderer ||
-    (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) ||
-    plugin.isDev ||
-    (!hasPermission && !isExternallyManaged) ||
-    !plugin.isPublished ||
-    !isCompatible ||
-    !isRemotePluginsAvailable
-  );
+) => getInstallControlWarningReason(plugin, isRemotePluginsAvailable, latestCompatibleVersion) !== undefined;
+
+/**
+ * Builds a structured, install-time readiness summary for a plugin so the UI
+ * and telemetry can share a single source of truth for blocker reasons,
+ * compatibility, and signature posture.
+ */
+export const getInstallReadiness = (
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion?: Version
+): InstallReadiness => {
+  const signatureState = getInstallReadinessSignatureState(plugin.signature);
+  let blockerReason = getInstallControlWarningReason(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
+
+  // An invalid/modified signature is a blocker even when the install controls
+  // would otherwise allow it.
+  if (!blockerReason && signatureState === 'invalid') {
+    blockerReason = InstallReadinessBlockerReason.InvalidSignature;
+  }
+
+  const grafanaDependency =
+    latestCompatibleVersion?.grafanaDependency || plugin.details?.grafanaDependency || undefined;
+
+  return {
+    canInstall: blockerReason === undefined,
+    blockerReason,
+    isCompatible: Boolean(latestCompatibleVersion),
+    latestCompatibleVersion: latestCompatibleVersion?.version,
+    grafanaDependency,
+    signatureState,
+  };
 };
 
 export const isLocalPluginVisibleByConfig = (p: LocalPlugin) => isNotHiddenByConfig(p.id);

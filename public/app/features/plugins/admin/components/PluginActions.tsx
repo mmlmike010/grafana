@@ -1,5 +1,6 @@
 import { css } from '@emotion/css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom-v5-compat';
 
 import { type GrafanaTheme2, PluginErrorCode } from '@grafana/data';
 import { Trans } from '@grafana/i18n';
@@ -8,6 +9,7 @@ import { Icon, Stack, useStyles2 } from '@grafana/ui';
 import { GetStartedWithPlugin } from '../components/GetStartedWithPlugin/GetStartedWithPlugin';
 import { InstallControlsButton } from '../components/InstallControls/InstallControlsButton';
 import {
+  getInstallReadiness,
   getLatestCompatibleVersion,
   hasInstallControlWarning,
   isDisabledAngularPlugin,
@@ -15,7 +17,10 @@ import {
   isNonAngularVersion,
 } from '../helpers';
 import { useIsRemotePluginsAvailable } from '../state/hooks';
+import { trackPluginInstallDeflected } from '../tracking';
 import { type CatalogPlugin, PluginStatus, type Version } from '../types';
+
+import { InstallReadinessCard } from './InstallReadinessCard';
 
 interface Props {
   plugin?: CatalogPlugin;
@@ -23,9 +28,32 @@ interface Props {
 
 export const PluginActions = ({ plugin }: Props) => {
   const styles = useStyles2(getStyles);
+  const location = useLocation();
   const isRemotePluginsAvailable = useIsRemotePluginsAvailable();
   const latestCompatibleVersion = getLatestCompatibleVersion(plugin?.details?.versions);
   const [needReload, setNeedReload] = useState(false);
+
+  const readiness = plugin ? getInstallReadiness(plugin, isRemotePluginsAvailable, latestCompatibleVersion) : undefined;
+  const pluginId = plugin?.id;
+  const pluginType = plugin?.type;
+  const isAngular = plugin?.angularDetected;
+  const isInstalled = plugin?.isInstalled;
+  const blockerReason = readiness?.blockerReason;
+  const pathname = location.pathname;
+
+  // Track install deflections when an administrator views a plugin that cannot
+  // (or should not) be installed in this Grafana instance.
+  useEffect(() => {
+    if (!pluginId || isAngular || isInstalled || !blockerReason) {
+      return;
+    }
+    trackPluginInstallDeflected({
+      plugin_id: pluginId,
+      plugin_type: pluginType,
+      path: pathname,
+      blocker_reason: blockerReason,
+    });
+  }, [pluginId, pluginType, isAngular, isInstalled, blockerReason, pathname]);
 
   if (!plugin || plugin.angularDetected) {
     return null;
@@ -49,6 +77,9 @@ export const PluginActions = ({ plugin }: Props) => {
         )}
         <GetStartedWithPlugin plugin={plugin} />
       </Stack>
+      {!plugin.isInstalled && readiness && (
+        <InstallReadinessCard plugin={plugin} readiness={readiness} pathname={pathname} />
+      )}
       {needReload && (
         <Stack alignItems="center">
           <Icon name="exclamation-triangle" />

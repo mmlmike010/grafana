@@ -452,6 +452,7 @@ func (hs *HTTPServer) registerRoutes() {
 		apiRoute.Any("/plugins/:pluginId/resources", requestmeta.SetSLOGroup(requestmeta.SLOGroupHighSlow), authorize(ac.EvalPermission(pluginaccesscontrol.ActionAppAccess, pluginIDScope)), checkAppEnabled(hs.pluginStore, hs.PluginSettings), hs.CallResource)
 		apiRoute.Any("/plugins/:pluginId/resources/*", requestmeta.SetSLOGroup(requestmeta.SLOGroupHighSlow), authorize(ac.EvalPermission(pluginaccesscontrol.ActionAppAccess, pluginIDScope)), checkAppEnabled(hs.pluginStore, hs.PluginSettings), hs.CallResource)
 		apiRoute.Get("/plugins/errors", routing.Wrap(hs.GetPluginErrorsList))
+		apiRoute.Get("/plugins/:pluginId/install-readiness", routing.Wrap(hs.GetPluginInstallReadiness))
 		apiRoute.Any("/plugin-proxy/:pluginId/*", requestmeta.SetSLOGroup(requestmeta.SLOGroupHighSlow), authorize(ac.EvalPermission(pluginaccesscontrol.ActionAppAccess, pluginIDScope)), checkAppEnabled(hs.pluginStore, hs.PluginSettings), hs.ProxyPluginRequest)
 		apiRoute.Any("/plugin-proxy/:pluginId", requestmeta.SetSLOGroup(requestmeta.SLOGroupHighSlow), authorize(ac.EvalPermission(pluginaccesscontrol.ActionAppAccess, pluginIDScope)), checkAppEnabled(hs.pluginStore, hs.PluginSettings), hs.ProxyPluginRequest)
 

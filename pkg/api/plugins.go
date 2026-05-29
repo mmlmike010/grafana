@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/datasources"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/services/org"
+	"github.com/grafana/grafana/pkg/services/pluginsintegration/installreadiness"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginaccesscontrol"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginsettings"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginstore"
@@ -456,6 +457,19 @@ func (hs *HTTPServer) CheckHealth(c *contextmodel.ReqContext) response.Response 
 
 func (hs *HTTPServer) GetPluginErrorsList(c *contextmodel.ReqContext) response.Response {
 	return response.JSON(http.StatusOK, hs.pluginErrorResolver.PluginErrors(c.Req.Context()))
+}
+
+func (hs *HTTPServer) GetPluginInstallReadiness(c *contextmodel.ReqContext) response.Response {
+	//nolint:staticcheck // not yet migrated to OpenFeature
+	if !hs.Features.IsEnabled(c.Req.Context(), featuremgmt.FlagPluginInstallReadiness) {
+		return response.Error(http.StatusNotFound, "Not found", nil)
+	}
+
+	pluginID := web.Params(c.Req)[":pluginId"]
+	svc := installreadiness.NewService(hs.Cfg, hs.pluginStore)
+	report := svc.GetReport(c.Req.Context(), pluginID)
+
+	return response.JSON(http.StatusOK, report)
 }
 
 func (hs *HTTPServer) InstallPlugin(c *contextmodel.ReqContext) response.Response {

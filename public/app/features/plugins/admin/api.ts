@@ -5,6 +5,7 @@ import { accessControlQueryParam } from 'app/core/utils/accessControl';
 import { isVersionGtOrEq } from 'app/core/utils/version';
 
 import { API_ROOT, GCOM_API_ROOT, INSTANCE_API_ROOT } from './constants';
+import { type PluginInstallReadinessContext } from './utils/buildInstallReadiness';
 import { isLocalPluginVisibleByConfig, isRemotePluginVisibleByConfig } from './helpers';
 import {
   type LocalPlugin,
@@ -265,6 +266,12 @@ export async function updatePluginSettings(id: string, data: Partial<PluginMeta>
   });
 
   return response?.data;
+}
+
+export async function getPluginInstallReadinessContext(
+  pluginId: string
+): Promise<PluginInstallReadinessContext> {
+  return getBackendSrv().get<PluginInstallReadinessContext>(`${API_ROOT}/${pluginId}/install-readiness`);
 }
 
 export const api = { getRemotePlugins, getInstalledPlugins: getLocalPlugins, installPlugin, uninstallPlugin };

@@ -4,6 +4,14 @@ import { getGeometryField, getDefaultLocationMatchers } from 'app/features/geo/u
 
 import { type Options } from './panelcfg.gen';
 
+const getPreviewLayerOptions = () => ({
+  type: 'markers',
+  name: '',
+  config: {
+    showLegend: false,
+  },
+});
+
 export const geomapSuggestionsSupplier: VisualizationSuggestionsSupplier<Options, GraphFieldConfig> = (dataSummary) => {
   if (!dataSummary.hasData || !dataSummary.rawFrames) {
     return;
@@ -26,14 +34,17 @@ export const geomapSuggestionsSupplier: VisualizationSuggestionsSupplier<Options
       },
       cardOptions: {
         previewModifier: (s) => {
-          s.options!.controls = {
+          s.options = s.options ?? {};
+          s.options.controls = {
+            ...s.options.controls,
             showZoom: false,
             showScale: false,
             showAttribution: false,
             showMeasure: false,
           };
-          // FIXME: this doesn't work. I want to disable legends in the preview.
-          s.options?.layers?.forEach((layer) => {
+
+          s.options.layers = s.options.layers?.length ? s.options.layers : [getPreviewLayerOptions()];
+          s.options.layers.forEach((layer) => {
             layer.config = layer.config || {};
             layer.config.showLegend = false;
           });

@@ -39,6 +39,7 @@ export function InstallReadinessIndicator({
 }: Props) {
   const styles = useStyles2(getStyles);
   const hasTrackedDeflection = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const readiness = getInstallReadiness(plugin, {
     latestCompatibleVersion,
     isRemotePluginsAvailable,
@@ -117,7 +118,18 @@ export function InstallReadinessIndicator({
     <PopoverController content={popoverContent}>
       {(showPopper, hidePopper, popperProps) => (
         <>
+          {triggerRef.current && popperProps.show && (
+            <Popover
+              {...popperProps}
+              content={popoverContent}
+              referenceElement={triggerRef.current}
+              renderArrow
+              placement="bottom-end"
+              hidePopper={hidePopper}
+            />
+          )}
           <button
+            ref={triggerRef}
             type="button"
             className={styles.trigger}
             data-testid="install-readiness-indicator"
@@ -128,15 +140,6 @@ export function InstallReadinessIndicator({
           >
             <Badge color={color} icon={icon} text={label} />
           </button>
-          {popperProps.show && popperProps.referenceElement && (
-            <Popover
-              {...popperProps}
-              content={popoverContent}
-              referenceElement={popperProps.referenceElement}
-              renderArrow
-              placement="bottom-end"
-            />
-          )}
         </>
       )}
     </PopoverController>

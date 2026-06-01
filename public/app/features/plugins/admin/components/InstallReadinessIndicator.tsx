@@ -70,48 +70,50 @@ export function InstallReadinessIndicator({
   const { icon, color, label } = getIndicatorPresentation(readiness);
 
   const popoverContent = (
-    <Stack direction="column" gap={1} className={styles.popover}>
-      <Text weight="medium">{getReadinessTitle(readiness)}</Text>
-      {readiness.compatibleVersion && (
+    <div className={styles.popover}>
+      <Stack direction="column" gap={1}>
+        <Text weight="medium">{getReadinessTitle(readiness)}</Text>
+        {readiness.compatibleVersion && (
+          <Text variant="bodySmall" color="secondary">
+            <Trans i18nKey="plugins.install-readiness.compatible-version" values={{ version: readiness.compatibleVersion }}>
+              Compatible version: {'{{version}}'}
+            </Trans>
+          </Text>
+        )}
+        {readiness.grafanaDependency && (
+          <Text variant="bodySmall" color="secondary">
+            <Trans
+              i18nKey="plugins.install-readiness.grafana-dependency"
+              values={{ dependency: readiness.grafanaDependency }}
+            >
+              Requires Grafana {'{{dependency}}'}
+            </Trans>
+          </Text>
+        )}
         <Text variant="bodySmall" color="secondary">
-          <Trans i18nKey="plugins.install-readiness.compatible-version" values={{ version: readiness.compatibleVersion }}>
-            Compatible version: {'{{version}}'}
+          <Trans i18nKey="plugins.install-readiness.signature" values={{ signature: readiness.signatureLabel }}>
+            Signature: {'{{signature}}'}
           </Trans>
         </Text>
-      )}
-      {readiness.grafanaDependency && (
-        <Text variant="bodySmall" color="secondary">
-          <Trans
-            i18nKey="plugins.install-readiness.grafana-dependency"
-            values={{ dependency: readiness.grafanaDependency }}
-          >
-            Requires Grafana {'{{dependency}}'}
-          </Trans>
-        </Text>
-      )}
-      <Text variant="bodySmall" color="secondary">
-        <Trans i18nKey="plugins.install-readiness.signature" values={{ signature: readiness.signatureLabel }}>
-          Signature: {'{{signature}}'}
-        </Trans>
-      </Text>
-      <Stack direction="row" gap={1} wrap="wrap">
-        {plugin.details?.changelog && (
-          <TextLink href={`${locationService.getLocation().pathname}?page=${PluginTabIds.CHANGELOG}`}>
-            <Trans i18nKey="plugins.install-readiness.changelog">Changelog</Trans>
-          </TextLink>
-        )}
-        {plugin.orgUrl && (
-          <TextLink href={plugin.orgUrl} external>
-            <Trans i18nKey="plugins.install-readiness.maintainer">Maintainer</Trans>
-          </TextLink>
-        )}
-        {plugin.url && (
-          <TextLink href={plugin.url} external>
-            <Trans i18nKey="plugins.install-readiness.source">Source</Trans>
-          </TextLink>
-        )}
+        <Stack direction="row" gap={1} wrap="wrap">
+          {plugin.details?.changelog && (
+            <TextLink href={`${locationService.getLocation().pathname}?page=${PluginTabIds.CHANGELOG}`}>
+              <Trans i18nKey="plugins.install-readiness.changelog">Changelog</Trans>
+            </TextLink>
+          )}
+          {plugin.orgUrl && (
+            <TextLink href={plugin.orgUrl} external>
+              <Trans i18nKey="plugins.install-readiness.maintainer">Maintainer</Trans>
+            </TextLink>
+          )}
+          {plugin.url && (
+            <TextLink href={plugin.url} external>
+              <Trans i18nKey="plugins.install-readiness.source">Source</Trans>
+            </TextLink>
+          )}
+        </Stack>
       </Stack>
-    </Stack>
+    </div>
   );
 
   return (

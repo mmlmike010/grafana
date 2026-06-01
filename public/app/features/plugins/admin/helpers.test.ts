@@ -14,6 +14,9 @@ import {
   isRemotePluginVisibleByConfig,
   isNonAngularVersion,
   isDisabledAngularPlugin,
+  getInstallReadiness,
+  InstallReadinessBlockerReason,
+  InstallReadinessState,
 } from './helpers';
 import { getLocalPluginMock, getRemotePluginMock, getCatalogPluginMock } from './mocks/mockHelpers';
 import {
@@ -1073,6 +1076,63 @@ describe('Plugins/Helpers', () => {
     it('should return false for plugins that are not disabled', () => {
       const plugin = { isDisabled: false, error: undefined } as CatalogPlugin;
       expect(isDisabledAngularPlugin(plugin)).toBe(false);
+    });
+  });
+
+  describe('getInstallReadiness', () => {
+    const basePlugin = getCatalogPluginMock({
+      isPublished: true,
+      signature: PluginSignatureStatus.valid,
+    });
+    const compatibleVersion: Version = {
+      version: '1.0.0',
+      createdAt: '',
+      isCompatible: true,
+      grafanaDependency: '>=10.0.0',
+    };
+
+    test('returns ready for compatible signed plugins', () => {
+      const readiness = getInstallReadiness(basePlugin, {
+        latestCompatibleVersion: compatibleVersion,
+        isRemotePluginsAvailable: true,
+        hasInstallPermission: true,
+      });
+
+      expect(readiness?.state).toBe(InstallReadinessState.Ready);
+      expect(readiness?.compatibleVersion).toBe('1.0.0');
+      expect(readiness?.grafanaDependency).toBe('>=10.0.0');
+    });
+
+    test('returns blocked for incompatible plugins', () => {
+      const readiness = getInstallReadiness(basePlugin, {
+        latestCompatibleVersion: undefined,
+        isRemotePluginsAvailable: true,
+        hasInstallPermission: true,
+      });
+
+      expect(readiness?.state).toBe(InstallReadinessState.Blocked);
+      expect(readiness?.blockerReason).toBe(InstallReadinessBlockerReason.IncompatibleVersion);
+    });
+
+    test('returns warning for unsigned plugins', () => {
+      const readiness = getInstallReadiness(
+        getCatalogPluginMock({ signature: PluginSignatureStatus.missing, isPublished: true }),
+        {
+          latestCompatibleVersion: compatibleVersion,
+          isRemotePluginsAvailable: true,
+          hasInstallPermission: true,
+        }
+      );
+
+      expect(readiness?.state).toBe(InstallReadinessState.Warning);
+      expect(readiness?.blockerReason).toBe(InstallReadinessBlockerReason.UnsignedSignature);
+    });
+
+    test('maps orgUrl from remote plugins', () => {
+      const remote = getRemotePluginMock({ orgUrl: 'https://github.com/example' });
+      const catalog = mapRemoteToCatalog(remote);
+
+      expect(catalog.orgUrl).toBe('https://github.com/example');
     });
   });
 });

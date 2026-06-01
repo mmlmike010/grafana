@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { type GrafanaTheme2, PluginErrorCode } from '@grafana/data';
 import { Trans } from '@grafana/i18n';
 import { Icon, Stack, useStyles2 } from '@grafana/ui';
+import { contextSrv } from 'app/core/services/context_srv';
+import { AccessControlAction } from 'app/types/accessControl';
 
 import { GetStartedWithPlugin } from '../components/GetStartedWithPlugin/GetStartedWithPlugin';
+import { InstallReadinessIndicator } from '../components/InstallReadinessIndicator';
 import { InstallControlsButton } from '../components/InstallControls/InstallControlsButton';
 import {
   getLatestCompatibleVersion,
@@ -34,18 +37,27 @@ export const PluginActions = ({ plugin }: Props) => {
   const hasInstallWarning = hasInstallControlWarning(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
   const pluginStatus = getPluginStatus(plugin, latestCompatibleVersion);
   const isInstallControlsDisabled = getInstallControlsDisabled(plugin, latestCompatibleVersion);
+  const hasInstallPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
 
   return (
     <Stack direction="column">
       <Stack alignItems="center">
         {!isInstallControlsDisabled && (
-          <InstallControlsButton
-            plugin={plugin}
-            latestCompatibleVersion={latestCompatibleVersion}
-            pluginStatus={pluginStatus}
-            setNeedReload={setNeedReload}
-            hasInstallWarning={hasInstallWarning}
-          />
+          <>
+            <InstallReadinessIndicator
+              plugin={plugin}
+              latestCompatibleVersion={latestCompatibleVersion}
+              isRemotePluginsAvailable={isRemotePluginsAvailable}
+              hasInstallPermission={hasInstallPermission}
+            />
+            <InstallControlsButton
+              plugin={plugin}
+              latestCompatibleVersion={latestCompatibleVersion}
+              pluginStatus={pluginStatus}
+              setNeedReload={setNeedReload}
+              hasInstallWarning={hasInstallWarning}
+            />
+          </>
         )}
         <GetStartedWithPlugin plugin={plugin} />
       </Stack>

@@ -33,6 +33,7 @@ describe('PluginActions', () => {
     it('should render install button for non-installed plugin', () => {
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
+      expect(screen.getByTestId('install-readiness-indicator')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
     });
 
@@ -263,6 +264,17 @@ function createPluginStub(overrides?: Partial<CatalogPlugin>): CatalogPlugin {
     isEnterprise: false,
     isDeprecated: false,
     isPreinstalled: { found: false, withVersion: false },
+    details: {
+      versions: [
+        {
+          version: '1.0.0',
+          createdAt: '',
+          isCompatible: true,
+          grafanaDependency: '>=10.0.0',
+        },
+      ],
+      links: [],
+    },
     ...overrides,
   };
 }

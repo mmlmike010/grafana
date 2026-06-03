@@ -1,6 +1,6 @@
 module github.com/grafana/grafana
 
-go 1.25.9
+go 1.26.0
 
 // Direct requirements -- every entry needs an owner
 require (
@@ -209,19 +209,19 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260209200024-4cfbd4190f57 // @grafana/identity-access-team
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // @grafana/identity-access-team
 	google.golang.org/grpc v1.79.3 // @grafana/plugins-platform-backend
-	google.golang.org/protobuf v1.36.11 // @grafana/plugins-platform-backend
+	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // @grafana/plugins-platform-backend
 	gopkg.in/ini.v1 v1.67.1 // @grafana/alerting-backend
 	gopkg.in/mail.v2 v2.3.1 // @grafana/grafana-backend-group
-	k8s.io/api v0.35.3 // @grafana/grafana-app-platform-squad
+	k8s.io/api v0.36.1 // @grafana/grafana-app-platform-squad
 	k8s.io/apiextensions-apiserver v0.35.1 // @grafana/grafana-app-platform-squad
-	k8s.io/apimachinery v0.35.3 // @grafana/grafana-app-platform-squad
+	k8s.io/apimachinery v0.36.1 // @grafana/grafana-app-platform-squad
 	k8s.io/apiserver v0.35.1 // @grafana/grafana-app-platform-squad
 	k8s.io/client-go v0.35.3 // @grafana/grafana-app-platform-squad
 	k8s.io/component-base v0.35.1 // @grafana/grafana-app-platform-squad
-	k8s.io/klog/v2 v2.130.1 // @grafana/grafana-app-platform-squad
+	k8s.io/klog/v2 v2.140.0 // @grafana/grafana-app-platform-squad
 	k8s.io/kube-aggregator v0.35.0 // @grafana/grafana-app-platform-squad
-	k8s.io/kube-openapi v0.0.0-20260127142750-a19766b6e2d4 // @grafana/grafana-app-platform-squad
-	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4 // @grafana/data-sources-plugins
+	k8s.io/kube-openapi v0.0.0-20260317180543-43fb72c5454a // @grafana/grafana-app-platform-squad
+	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // @grafana/data-sources-plugins
 	modernc.org/sqlite v1.47.0 // @grafana/grafana-backend-group
 	pgregory.net/rapid v1.2.0 // @grafana/grafana-operator-experience-squad
 	sigs.k8s.io/randfill v1.0.0 // @grafana/grafana-app-platform-squad
@@ -559,7 +559,7 @@ require (
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
-	github.com/moby/spdystream v0.5.0 // indirect
+	github.com/moby/spdystream v0.5.1 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
 	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
@@ -702,6 +702,8 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 	software.sslmate.com/src/go-pkcs12 v0.7.0 // indirect
 )
+
+require k8s.io/streaming v0.36.1 // indirect
 
 replace (
 	// Use fork of crewjam/saml with fixes for some issues until changes get merged into upstream

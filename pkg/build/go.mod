@@ -24,7 +24,7 @@ require (
 	golang.org/x/net v0.52.0 // indirect; @grafana/data-sources-plugins
 	golang.org/x/sync v0.20.0 // @grafana/alerting-backend
 	golang.org/x/text v0.35.0 // indirect; @grafana/grafana-backend-group
-	google.golang.org/grpc v1.79.3 // indirect; @grafana/plugins-platform-backend
+	google.golang.org/grpc v1.80.0 // indirect; @grafana/plugins-platform-backend
 	google.golang.org/protobuf v1.36.11 // indirect; @grafana/plugins-platform-backend
 )
 

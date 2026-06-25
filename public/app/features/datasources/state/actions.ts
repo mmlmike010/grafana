@@ -48,6 +48,7 @@ import {
   testDataSourceFailed,
   testDataSourceStarting,
   testDataSourceSucceeded,
+  updateDataSourceFailed,
 } from './reducers';
 import { getDataSource, getDataSourceMeta } from './selectors';
 
@@ -89,6 +90,21 @@ const parseHealthCheckError = (errorResponse: any): parseDataSourceSaveResponse 
   }
 
   return { message, details };
+};
+
+const parseDataSourceSaveError = (errorResponse: unknown): parseDataSourceSaveResponse => {
+  let detailsMessage: string | undefined;
+
+  if (isFetchError(errorResponse)) {
+    detailsMessage = errorResponse.data.message ?? `HTTP error ${errorResponse.statusText}`;
+  } else if (errorResponse instanceof Error) {
+    detailsMessage = errorResponse.message;
+  }
+
+  return {
+    message: t('datasources.update-data-source.error-info.message.failed-to-save', 'Failed to save data source'),
+    details: detailsMessage ? { message: detailsMessage } : undefined,
+  };
 };
 
 const parseHealthCheckSuccess = (response: TestDataSourceResponse): parseDataSourceSaveResponse => {
@@ -299,9 +315,7 @@ export function updateDataSource(dataSource: DataSourceSettings) {
       }
       await api.updateDataSource(dataSource);
     } catch (err) {
-      const formattedError = parseHealthCheckError(err);
-
-      dispatch(testDataSourceFailed(formattedError));
+      dispatch(updateDataSourceFailed(parseDataSourceSaveError(err)));
       const errorInfo = isFetchError(err)
         ? err.data
         : {

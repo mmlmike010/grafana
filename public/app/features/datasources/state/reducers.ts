@@ -131,6 +131,8 @@ export const testDataSourceSucceeded = createAction<TestingStatus>('dataSourceSe
 
 export const testDataSourceFailed = createAction<TestingStatus>('dataSourceSettings/testDataSourceFailed');
 
+export const updateDataSourceFailed = createAction<TestingStatus>('dataSourceSettings/updateDataSourceFailed');
+
 export const dataSourceSettingsReducer = (
   state: DataSourceSettingsState = initialDataSourceSettingsState,
   action: AnyAction
@@ -168,6 +170,17 @@ export const dataSourceSettingsReducer = (
   }
 
   if (testDataSourceFailed.match(action)) {
+    return {
+      ...state,
+      testingStatus: {
+        status: 'error',
+        message: action.payload?.message,
+        details: action.payload?.details,
+      },
+    };
+  }
+
+  if (updateDataSourceFailed.match(action)) {
     return {
       ...state,
       testingStatus: {

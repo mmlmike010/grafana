@@ -1,13 +1,13 @@
 ---
 name: reset-environment
-description: Reset the Grafana repo working tree to match origin/main and remove untracked files. Use when the user asks to reset the environment, clean the repo, discard all local changes, or return to origin/main.
+description: Reset the Grafana repo working tree to match origin/main, remove extra git worktrees, and remove untracked files. Use when the user asks to reset the environment, clean the repo, discard all local changes, remove worktrees, or return to origin/main.
 ---
 
 # Reset Environment
 
-Use this skill to reset the current Grafana checkout to `origin/main` and remove untracked files.
+Use this skill to reset the current Grafana checkout to `origin/main`, remove any extra git worktrees, and remove untracked files.
 
-This is destructive. It drops local commits, tracked edits, and untracked files that are not backed up elsewhere.
+This is destructive. It drops local commits, tracked edits, untracked files, and linked worktree checkouts that are not backed up elsewhere.
 
 ## Workflow
 
@@ -26,8 +26,10 @@ If the user's latest message already clearly authorizes the destructive reset, p
 
 3. Summarize the result with:
 - The commands that ran
+- Any worktrees removed (paths and branches)
 - The final commit short SHA
 - Whether `git status --short` is clean
+- Whether only the main checkout remains in `git worktree list`
 - Any errors or files that could not be removed
 
 ## Do Not

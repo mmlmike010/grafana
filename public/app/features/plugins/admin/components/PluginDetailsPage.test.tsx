@@ -1,7 +1,8 @@
 import { render, screen } from 'test/test-utils';
 
 import { PluginSignatureStatus, PluginSignatureType, PluginType } from '@grafana/data';
-import { config } from '@grafana/runtime';
+import { config, reportInteraction } from '@grafana/runtime';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import { type CatalogPlugin } from '../types';
 
@@ -68,12 +69,17 @@ const plugin: CatalogPlugin = {
   },
 };
 
+jest.mock('@grafana/runtime', () => ({
+  ...jest.requireActual('@grafana/runtime'),
+  reportInteraction: jest.fn(),
+}));
+
 jest.mock('../state/hooks', () => ({
   useGetSingle: jest.fn(),
   useGetPluginInsights: jest.fn(),
   useFetchStatus: jest.fn().mockReturnValue({ isLoading: false }),
   useFetchDetailsStatus: () => ({ isLoading: false }),
-  useIsRemotePluginsAvailable: () => false,
+  useIsRemotePluginsAvailable: jest.fn().mockReturnValue(true),
   useInstallStatus: () => ({ error: null, isInstalling: false }),
   useUninstallStatus: () => ({ error: null, isUninstalling: false }),
   useInstall: () => jest.fn(),
@@ -93,6 +99,8 @@ describe('PluginDetailsPage', () => {
   beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation();
     mockUseGetSingle.mockReturnValue(plugin);
+    jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    (reportInteraction as jest.Mock).mockClear();
   });
 
   afterEach(() => {
@@ -168,5 +176,36 @@ describe('PluginDetailsPage', () => {
 
     render(<PluginDetailsPage pluginId={plugin.id} />);
     expect(screen.queryByText('Latest Version:')).not.toBeInTheDocument();
+  });
+
+  it('tracks install deflection when an uninstalled plugin cannot be installed', () => {
+    mockUseGetSingle.mockReturnValue({
+      ...plugin,
+      isInstalled: false,
+      details: {
+        ...plugin.details!,
+        versions: [
+          {
+            version: '1.0.0',
+            createdAt: '2023-01-01',
+            isCompatible: false,
+            grafanaDependency: '>=9.0.0',
+            angularDetected: false,
+          },
+        ],
+      },
+    });
+
+    render(<PluginDetailsPage pluginId={plugin.id} />);
+
+    expect(reportInteraction).toHaveBeenCalledWith(
+      'plugins_detail_install_deflected',
+      expect.objectContaining({
+        plugin_id: plugin.id,
+        deflection_reason: 'incompatible_version',
+        creator_team: 'grafana_plugins_catalog',
+        schema_version: '1.0.0',
+      })
+    );
   });
 });

@@ -58,6 +58,7 @@ export async function getPluginDetails(id: string): Promise<CatalogPluginDetails
     sponsorshipUrl: remote?.sponsorshipUrl,
     repositoryUrl: remote?.repositoryUrl,
     raiseAnIssueUrl: remote?.raiseAnIssueUrl,
+    orgUrl: remote?.orgUrl,
     signatureType: local?.signatureType || (remote?.signatureType !== '' ? remote?.signatureType : undefined),
     signature: local?.signature,
     screenshots: remote?.json?.info.screenshots || local?.info.screenshots,

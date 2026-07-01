@@ -6,8 +6,7 @@ import { type GrafanaTheme2, PluginSignatureStatus } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
 import { Badge, Stack, TextLink, useStyles2, type BadgeColor } from '@grafana/ui';
 
-import { PluginTabIds } from '../../types';
-import { type InstallReadinessResult, InstallReadinessSeverity } from '../../types';
+import { PluginTabIds, type InstallReadinessResult, InstallReadinessSeverity } from '../../types';
 
 interface Props {
   readiness: InstallReadinessResult;
@@ -25,41 +24,43 @@ export function InstallReadinessIndicator({ readiness, pluginName }: Props): Rea
   const changelogUrl = hasChangelog ? `${location.pathname}?page=${PluginTabIds.CHANGELOG}` : undefined;
 
   const tooltip = (
-    <Stack direction="column" gap={1} className={styles.tooltip}>
-      <strong>{pluginName}</strong>
-      <span>{getReadinessDescription(readiness)}</span>
-      {latestCompatibleVersion && (
-        <span>
-          <Trans i18nKey="plugins.install-readiness-indicator.compatible-version">
-            Compatible version: {{ version: latestCompatibleVersion.version }}
-          </Trans>
-        </span>
-      )}
-      {grafanaDependency && (
-        <span>
-          <Trans i18nKey="plugins.install-readiness-indicator.grafana-dependency">
-            Requires Grafana {{ dependency: grafanaDependency }}
-          </Trans>
-        </span>
-      )}
-      <Stack direction="column" gap={0.5}>
-        {changelogUrl && (
-          <TextLink href={changelogUrl}>
-            <Trans i18nKey="plugins.install-readiness-indicator.view-changelog">View changelog</Trans>
-          </TextLink>
+    <div className={styles.tooltip}>
+      <Stack direction="column" gap={1}>
+        <strong>{pluginName}</strong>
+        <span>{getReadinessDescription(readiness)}</span>
+        {latestCompatibleVersion && (
+          <span>
+            <Trans i18nKey="plugins.install-readiness-indicator.compatible-version">
+              Compatible version: {{ version: latestCompatibleVersion.version }}
+            </Trans>
+          </span>
         )}
-        {sourceUrl && (
-          <TextLink href={sourceUrl} external>
-            <Trans i18nKey="plugins.install-readiness-indicator.view-source">View source</Trans>
-          </TextLink>
+        {grafanaDependency && (
+          <span>
+            <Trans i18nKey="plugins.install-readiness-indicator.grafana-dependency">
+              Requires Grafana {{ dependency: grafanaDependency }}
+            </Trans>
+          </span>
         )}
-        {maintainerUrl && (
-          <TextLink href={maintainerUrl} external>
-            <Trans i18nKey="plugins.install-readiness-indicator.view-maintainer">View maintainer</Trans>
-          </TextLink>
-        )}
+        <Stack direction="column" gap={0.5}>
+          {changelogUrl && (
+            <TextLink href={changelogUrl}>
+              <Trans i18nKey="plugins.install-readiness-indicator.view-changelog">View changelog</Trans>
+            </TextLink>
+          )}
+          {sourceUrl && (
+            <TextLink href={sourceUrl} external>
+              <Trans i18nKey="plugins.install-readiness-indicator.view-source">View source</Trans>
+            </TextLink>
+          )}
+          {maintainerUrl && (
+            <TextLink href={maintainerUrl} external>
+              <Trans i18nKey="plugins.install-readiness-indicator.view-maintainer">View maintainer</Trans>
+            </TextLink>
+          )}
+        </Stack>
       </Stack>
-    </Stack>
+    </div>
   );
 
   return (

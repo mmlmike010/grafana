@@ -89,16 +89,25 @@ jest.mock('../state/hooks', () => ({
 }));
 
 jest.mock('../hooks/usePluginConfig', () => ({
-  usePluginConfig: jest.fn().mockReturnValue({ value: {}, loading: false }),
+  usePluginConfig: jest.fn().mockReturnValue({
+    value: { meta: { enabled: false, autoEnabled: false, jsonData: {} } },
+    loading: false,
+  }),
 }));
 
 const mockUseGetSingle = jest.requireMock('../state/hooks').useGetSingle;
 const mockUsePluginConfig = jest.requireMock('../hooks/usePluginConfig').usePluginConfig;
 
+const defaultPluginConfig = {
+  value: { meta: { enabled: false, autoEnabled: false, jsonData: {} } },
+  loading: false,
+};
+
 describe('PluginDetailsPage', () => {
   beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation();
     mockUseGetSingle.mockReturnValue(plugin);
+    mockUsePluginConfig.mockReturnValue(defaultPluginConfig);
     jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
     (reportInteraction as jest.Mock).mockClear();
   });
@@ -150,7 +159,7 @@ describe('PluginDetailsPage', () => {
   it('should show "Datasource connections" tab when plugin is type of datasource', () => {
     config.featureToggles.datasourceConnectionsTab = true;
     mockUseGetSingle.mockReturnValue({ ...plugin, type: PluginType.datasource });
-    mockUsePluginConfig.mockReturnValue({ value: {}, loading: false });
+    mockUsePluginConfig.mockReturnValue(defaultPluginConfig);
     render(<PluginDetailsPage pluginId={plugin.id} />);
     expect(screen.getByRole('tab', { name: 'Data source connections' })).toBeVisible();
   });

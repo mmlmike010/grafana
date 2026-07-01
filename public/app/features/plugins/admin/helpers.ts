@@ -10,7 +10,7 @@ import {
   type CatalogPlugin,
   type InstancePlugin,
   type LocalPlugin,
-  InstallReadinessReason,
+  type InstallReadinessReason,
   InstallReadinessSeverity,
   type InstallReadinessResult,
   PluginUpdateStrategy,
@@ -458,7 +458,6 @@ export function getInstallReadiness({
   isRemotePluginsAvailable,
 }: {
   plugin: CatalogPlugin;
-  pluginStatus?: PluginStatus;
   latestCompatibleVersion?: Version;
   isRemotePluginsAvailable: boolean;
 }): InstallReadinessResult {
@@ -576,7 +575,6 @@ export function getInstallDeflectionReason({
   isRemotePluginsAvailable,
 }: {
   plugin: CatalogPlugin;
-  pluginStatus?: PluginStatus;
   latestCompatibleVersion?: Version;
   isRemotePluginsAvailable: boolean;
 }): InstallReadinessReason | null {

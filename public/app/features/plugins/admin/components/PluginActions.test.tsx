@@ -1,6 +1,7 @@
 import { render, screen } from 'test/test-utils';
 
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType } from '@grafana/data';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import * as helpers from '../helpers';
 import * as hooks from '../state/hooks';
@@ -17,6 +18,7 @@ describe('PluginActions', () => {
     jest.spyOn(helpers, 'isInstallControlsEnabled').mockReturnValue(true);
     jest.spyOn(helpers, 'hasInstallControlWarning').mockReturnValue(false);
     jest.spyOn(hooks, 'useIsRemotePluginsAvailable').mockReturnValue(true);
+    jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
   });
 
   afterEach(() => {

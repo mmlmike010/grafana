@@ -2,8 +2,9 @@ import { render, screen } from 'test/test-utils';
 
 import { PluginSignatureStatus } from '@grafana/data';
 
-import { InstallReadinessIndicator } from './InstallReadinessIndicator';
 import { InstallReadinessSeverity, type InstallReadinessResult } from '../../types';
+
+import { InstallReadinessIndicator } from './InstallReadinessIndicator';
 
 describe('InstallReadinessIndicator', () => {
   it('renders a ready badge with compatibility details', () => {

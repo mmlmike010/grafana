@@ -1,6 +1,7 @@
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType, PluginType } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { setTestFlags } from '@grafana/test-utils/unstable';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import {
   mapToCatalogPlugin,
@@ -30,7 +31,6 @@ import {
   PluginUpdateStrategy,
   InstallReadinessSeverity,
 } from './types';
-import { contextSrv } from 'app/core/services/context_srv';
 
 describe('Plugins/Helpers', () => {
   let remotePlugin: RemotePlugin;

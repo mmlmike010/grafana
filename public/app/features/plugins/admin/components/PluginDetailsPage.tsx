@@ -18,7 +18,13 @@ import { PluginDetailsSignature } from '../components/PluginDetailsSignature';
 import { getInstallDeflectionReasonForTelemetry, getLatestCompatibleVersion } from '../helpers';
 import { usePluginDetailsTabs } from '../hooks/usePluginDetailsTabs';
 import { usePluginPageExtensions } from '../hooks/usePluginPageExtensions';
-import { useGetSingle, useFetchStatus, useFetchDetailsStatus, useGetPluginInsights, useIsRemotePluginsAvailable } from '../state/hooks';
+import {
+  useGetSingle,
+  useFetchStatus,
+  useFetchDetailsStatus,
+  useGetPluginInsights,
+  useIsRemotePluginsAvailable,
+} from '../state/hooks';
 import { trackPluginInstallDeflected } from '../tracking';
 
 import { PluginDetailsDeprecatedWarning } from './PluginDetailsDeprecatedWarning';

@@ -398,8 +398,7 @@ function getSignatureReadinessReason(signature: PluginSignatureStatus): InstallR
 
 function getInstallReadinessLinks(plugin: CatalogPlugin) {
   const sourceUrl = plugin.details?.repositoryUrl;
-  const maintainerUrl =
-    plugin.details?.orgUrl || plugin.url || plugin.details?.links?.find((link) => link.url)?.url;
+  const maintainerUrl = plugin.details?.orgUrl || plugin.url || plugin.details?.links?.find((link) => link.url)?.url;
 
   return {
     hasChangelog: Boolean(plugin.details?.changelog),

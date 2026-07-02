@@ -14,6 +14,7 @@ import {
   isRemotePluginVisibleByConfig,
   isNonAngularVersion,
   isDisabledAngularPlugin,
+  getInstallReadiness,
 } from './helpers';
 import { getLocalPluginMock, getRemotePluginMock, getCatalogPluginMock } from './mocks/mockHelpers';
 import {
@@ -23,7 +24,9 @@ import {
   type Version,
   type CatalogPlugin,
   PluginUpdateStrategy,
+  InstallReadinessStatus,
 } from './types';
+import { contextSrv } from 'app/core/services/context_srv';
 
 describe('Plugins/Helpers', () => {
   let remotePlugin: RemotePlugin;
@@ -1073,6 +1076,128 @@ describe('Plugins/Helpers', () => {
     it('should return false for plugins that are not disabled', () => {
       const plugin = { isDisabled: false, error: undefined } as CatalogPlugin;
       expect(isDisabledAngularPlugin(plugin)).toBe(false);
+    });
+  });
+
+  describe('getInstallReadiness()', () => {
+    const compatibleVersion: Version = {
+      version: '2.0.0',
+      createdAt: '',
+      updatedAt: '',
+      isCompatible: true,
+      grafanaDependency: '>=10.0.0',
+      angularDetected: false,
+    };
+
+    const baseReadinessPlugin = getCatalogPluginMock({
+      isPublished: true,
+      isInstalled: false,
+      signature: PluginSignatureStatus.valid,
+      details: {
+        links: [],
+        versions: [compatibleVersion],
+        grafanaDependency: '>=10.0.0',
+        changelog: '<p>Changes</p>',
+        repositoryUrl: 'https://github.com/grafana/test-plugin',
+      },
+    });
+
+    beforeEach(() => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+      config.pluginAdminEnabled = true;
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns ready for installable plugin with valid signature', () => {
+      const readiness = getInstallReadiness({
+        plugin: baseReadinessPlugin,
+        isRemotePluginsAvailable: true,
+        latestCompatibleVersion: compatibleVersion,
+      });
+
+      expect(readiness.status).toBe(InstallReadinessStatus.Ready);
+      expect(readiness.reason).toBe('ready');
+      expect(readiness.isDeflected).toBe(false);
+      expect(readiness.links.hasChangelog).toBe(true);
+      expect(readiness.links.repositoryUrl).toBe('https://github.com/grafana/test-plugin');
+    });
+
+    it('returns blocked when no compatible version is available', () => {
+      const readiness = getInstallReadiness({
+        plugin: baseReadinessPlugin,
+        isRemotePluginsAvailable: true,
+        latestCompatibleVersion: undefined,
+      });
+
+      expect(readiness.status).toBe(InstallReadinessStatus.Blocked);
+      expect(readiness.reason).toBe('incompatible');
+      expect(readiness.isDeflected).toBe(true);
+    });
+
+    it('returns warning for unsigned plugins that can still be installed', () => {
+      const readiness = getInstallReadiness({
+        plugin: {
+          ...baseReadinessPlugin,
+          signature: PluginSignatureStatus.missing,
+        },
+        isRemotePluginsAvailable: true,
+        latestCompatibleVersion: compatibleVersion,
+      });
+
+      expect(readiness.status).toBe(InstallReadinessStatus.Warning);
+      expect(readiness.reason).toBe('signature_missing');
+      expect(readiness.isDeflected).toBe(false);
+    });
+
+    it('returns blocked when remote plugins are unavailable', () => {
+      const readiness = getInstallReadiness({
+        plugin: baseReadinessPlugin,
+        isRemotePluginsAvailable: false,
+        latestCompatibleVersion: compatibleVersion,
+      });
+
+      expect(readiness.status).toBe(InstallReadinessStatus.Blocked);
+      expect(readiness.reason).toBe('remote_unavailable');
+    });
+
+    it('returns blocked when install permission is missing', () => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(false);
+
+      const readiness = getInstallReadiness({
+        plugin: baseReadinessPlugin,
+        isRemotePluginsAvailable: true,
+        latestCompatibleVersion: compatibleVersion,
+      });
+
+      expect(readiness.status).toBe(InstallReadinessStatus.Blocked);
+      expect(readiness.reason).toBe('missing_permission');
+    });
+
+    it('returns blocked for core plugins', () => {
+      const readiness = getInstallReadiness({
+        plugin: { ...baseReadinessPlugin, isCore: true },
+        isRemotePluginsAvailable: true,
+        latestCompatibleVersion: compatibleVersion,
+      });
+
+      expect(readiness.status).toBe(InstallReadinessStatus.Blocked);
+      expect(readiness.reason).toBe('core');
+    });
+
+    it('returns loading state while compatibility details are still loading', () => {
+      const readiness = getInstallReadiness({
+        plugin: { ...baseReadinessPlugin, details: undefined },
+        isRemotePluginsAvailable: true,
+        latestCompatibleVersion: undefined,
+        isDetailsLoading: true,
+      });
+
+      expect(readiness.isLoading).toBe(true);
+      expect(readiness.reason).toBe('loading');
+      expect(readiness.isDeflected).toBe(false);
     });
   });
 });

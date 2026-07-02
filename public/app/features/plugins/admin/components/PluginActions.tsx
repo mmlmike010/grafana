@@ -7,14 +7,16 @@ import { Icon, Stack, useStyles2 } from '@grafana/ui';
 
 import { GetStartedWithPlugin } from '../components/GetStartedWithPlugin/GetStartedWithPlugin';
 import { InstallControlsButton } from '../components/InstallControls/InstallControlsButton';
+import { InstallReadinessIndicator } from '../components/InstallControls/InstallReadinessIndicator';
 import {
+  getInstallReadiness,
   getLatestCompatibleVersion,
   hasInstallControlWarning,
   isDisabledAngularPlugin,
   isInstallControlsEnabled,
   isNonAngularVersion,
 } from '../helpers';
-import { useIsRemotePluginsAvailable } from '../state/hooks';
+import { useFetchDetailsStatus, useIsRemotePluginsAvailable } from '../state/hooks';
 import { type CatalogPlugin, PluginStatus, type Version } from '../types';
 
 interface Props {
@@ -24,6 +26,7 @@ interface Props {
 export const PluginActions = ({ plugin }: Props) => {
   const styles = useStyles2(getStyles);
   const isRemotePluginsAvailable = useIsRemotePluginsAvailable();
+  const { isLoading: isDetailsLoading } = useFetchDetailsStatus();
   const latestCompatibleVersion = getLatestCompatibleVersion(plugin?.details?.versions);
   const [needReload, setNeedReload] = useState(false);
 
@@ -34,10 +37,18 @@ export const PluginActions = ({ plugin }: Props) => {
   const hasInstallWarning = hasInstallControlWarning(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
   const pluginStatus = getPluginStatus(plugin, latestCompatibleVersion);
   const isInstallControlsDisabled = getInstallControlsDisabled(plugin, latestCompatibleVersion);
+  const readiness = getInstallReadiness({
+    plugin,
+    isRemotePluginsAvailable,
+    latestCompatibleVersion,
+    isDetailsLoading,
+    isInstallControlsDisabled,
+  });
 
   return (
     <Stack direction="column">
       <Stack alignItems="center">
+        <InstallReadinessIndicator plugin={plugin} readiness={readiness} pluginStatus={pluginStatus} />
         {!isInstallControlsDisabled && (
           <InstallControlsButton
             plugin={plugin}

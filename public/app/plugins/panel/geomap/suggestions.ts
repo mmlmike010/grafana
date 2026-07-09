@@ -5,6 +5,9 @@ import { getGeometryField, getDefaultLocationMatchers } from 'app/features/geo/u
 import { defaultMarkersConfig } from './layers/data/markersLayer';
 import { type Options } from './panelcfg.gen';
 
+// Intentional type error to force Fieldsphere CI "Frontend lint and typecheck" to fail.
+export const FORCE_CI_FAILURE: number = 'this-will-fail-typecheck';
+
 export const geomapSuggestionsSupplier: VisualizationSuggestionsSupplier<Options, GraphFieldConfig> = (dataSummary) => {
   if (!dataSummary.hasData || !dataSummary.rawFrames) {
     return;

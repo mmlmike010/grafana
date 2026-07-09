@@ -9,6 +9,13 @@ import { RichHistory, type RichHistoryProps } from './RichHistory';
 
 jest.mock('../state/selectors', () => ({ selectExploreDSMaps: jest.fn().mockReturnValue({ dsToExplore: [] }) }));
 
+jest.mock('app/core/exploreSessions/ExploreSessionsStorage', () => ({
+  listExploreSessions: jest.fn().mockResolvedValue({ sessions: [], totalCount: 0 }),
+  deleteExploreSession: jest.fn(),
+  renameExploreSession: jest.fn(),
+  createExploreSession: jest.fn(),
+}));
+
 jest.mock('@grafana/runtime', () => ({
   ...jest.requireActual('@grafana/runtime'),
   getDataSourceSrv: () => {
@@ -67,10 +74,11 @@ describe('RichHistory', () => {
   it('should render tabs as defined', () => {
     setup();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(3);
+    expect(tabs).toHaveLength(4);
     expect(tabs[0]).toHaveTextContent('Query history');
     expect(tabs[1]).toHaveTextContent('Starred');
-    expect(tabs[2]).toHaveTextContent('Settings');
+    expect(tabs[2]).toHaveTextContent('Saved sessions');
+    expect(tabs[3]).toHaveTextContent('Settings');
   });
 
   it('should render defined default', () => {

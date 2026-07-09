@@ -19,6 +19,7 @@ import {
   initDataSourceSettings,
   loadDataSource,
   addDataSource,
+  updateDataSource,
 } from './actions';
 import {
   initDataSourceSettingsSucceeded,
@@ -26,6 +27,7 @@ import {
   testDataSourceStarting,
   testDataSourceSucceeded,
   testDataSourceFailed,
+  updateDataSourceFailed,
   dataSourceLoaded,
 } from './reducers';
 
@@ -372,6 +374,34 @@ describe('testDataSource', () => {
       await failDataSourceTest(error);
       expect(appEvents.publish).toHaveBeenCalledWith({ type: 'datasource-test-failed' });
     });
+  });
+});
+
+describe('updateDataSource', () => {
+  it('dispatches updateDataSourceFailed instead of testDataSourceFailed when save fails', async () => {
+    const dataSourceMock = getMockDataSource();
+    const validationError: FetchError = {
+      config: {
+        url: '',
+      },
+      data: { message: 'validation failed: url must include scheme' },
+      status: 500,
+      statusText: 'Internal Server Error',
+    };
+
+    (api.updateDataSource as jest.Mock).mockRejectedValueOnce(validationError);
+
+    const dispatchedActions = await thunkTester({})
+      .givenThunk(updateDataSource)
+      .whenThunkIsDispatched(dataSourceMock);
+
+    expect(dispatchedActions).toEqual([
+      updateDataSourceFailed({
+        message: 'Failed to save data source',
+        details: { message: 'validation failed: url must include scheme' },
+      }),
+    ]);
+    expect(dispatchedActions.some((action) => testDataSourceFailed.match(action))).toBe(false);
   });
 });
 

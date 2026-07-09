@@ -12436,7 +12436,11 @@
   },
   "panel": {
     "dashlist": {
+      "create-dashboard": "Create your first dashboard",
       "empty-state-message": "No dashboard groups configured",
+      "import-dashboard": "Import dashboard",
+      "no-dashboards-description": "Start by creating a dashboard or importing one from a JSON file or Grafana.com.",
+      "no-dashboards-message": "No dashboards yet",
       "recently-viewed-dashboards": "Recently viewed dashboards",
       "search": "Search",
       "starred-dashboards": "Starred dashboards"
@@ -16580,8 +16584,13 @@
   },
   "welcome": {
     "welcome-banner": {
-      "need-help": "Need help?",
-      "welcome-to-grafana": "Welcome to Grafana"
+      "create-dashboard": "Create your first dashboard",
+      "help-links-label": "Grafana help links",
+      "import-dashboard": "Import dashboard",
+      "sample-graph-aria-label": "Sample dashboard graph",
+      "sample-graph-label": "Sample graph",
+      "subtitle": "Visualize metrics, logs, and traces in minutes with dashboards that bring your data together.",
+      "title": "Build your first Grafana dashboard"
     }
   },
   "xychart": {

@@ -1,7 +1,8 @@
 import { render, screen, testWithFeatureToggles } from 'test/test-utils';
+import { HttpResponse, http } from 'msw';
 
 import { setBackendSrv } from '@grafana/runtime';
-import { setupMockServer } from '@grafana/test-utils/server';
+import server, { setupMockServer } from '@grafana/test-utils/server';
 import { getFolderFixtures } from '@grafana/test-utils/unstable';
 import { backendSrv } from 'app/core/services/backend_srv';
 import impressionSrv from 'app/core/services/impression_srv';
@@ -79,6 +80,29 @@ describe.each(fixtures)('%s', (_title, featureTogglesSetup) => {
     render(<DashList {...props} />);
 
     expect(await screen.findByText('No dashboard groups configured')).toBeInTheDocument();
+  });
+
+  it('renders create and import CTAs when no dashboards are found', async () => {
+    server.use(
+      http.get('/api/search', () => HttpResponse.json([])),
+      http.get('/apis/dashboard.grafana.app/v0alpha1/namespaces/:namespace/search', () =>
+        HttpResponse.json({ totalHits: 0, hits: [] })
+      )
+    );
+    const props = getPanelProps({
+      ...defaultOptions,
+      showRecentlyViewed: false,
+      showStarred: false,
+      showSearch: true,
+    });
+    render(<DashList {...props} />);
+
+    expect(await screen.findByText('No dashboards yet')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create your first dashboard' })).toHaveAttribute(
+      'href',
+      '/dashboard/new'
+    );
+    expect(screen.getByRole('link', { name: 'Import dashboard' })).toHaveAttribute('href', '/dashboard/import');
   });
 
   it('allows un-starring a dashboard', async () => {

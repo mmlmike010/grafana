@@ -12436,7 +12436,10 @@
   },
   "panel": {
     "dashlist": {
+      "create-dashboard": "Create your first dashboard",
       "empty-state-message": "No dashboard groups configured",
+      "no-dashboards-description": "Start with a blank canvas, then add panels for the metrics, logs, and traces you care about.",
+      "no-dashboards-message": "You haven't created any dashboards yet",
       "recently-viewed-dashboards": "Recently viewed dashboards",
       "search": "Search",
       "starred-dashboards": "Starred dashboards"
@@ -16580,8 +16583,16 @@
   },
   "welcome": {
     "welcome-banner": {
-      "need-help": "Need help?",
-      "welcome-to-grafana": "Welcome to Grafana"
+      "create-dashboard": "Create your first dashboard",
+      "eyebrow": "Welcome to Grafana",
+      "import-dashboard": "Import dashboard",
+      "learn-dashboards": "Learn dashboards",
+      "sample-graph-aria-label": "Sample dashboard metric graph",
+      "sample-graph-title": "Live sample",
+      "sample-graph-trend": "+28% over last hour",
+      "sample-graph-value": "46 req/s",
+      "subtitle": "Turn metrics, logs, and traces into dashboards your team can use right away.",
+      "title": "Build your first observability dashboard"
     }
   },
   "xychart": {

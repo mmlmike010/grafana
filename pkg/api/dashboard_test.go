@@ -111,6 +111,65 @@ func TestGetHomeDashboard(t *testing.T) {
 	}
 }
 
+func TestAddGettingStartedPanelToHomeDashboard(t *testing.T) {
+	hs := &HTTPServer{
+		Cfg:    setting.NewCfg(),
+		tracer: tracing.InitializeTracerForTest(),
+	}
+
+	httpReq, err := http.NewRequest(http.MethodGet, "", nil)
+	require.NoError(t, err)
+
+	req := &contextmodel.ReqContext{
+		SignedInUser: &user.SignedInUser{OrgRole: org.RoleAdmin},
+		Context:      &web.Context{Req: httpReq},
+	}
+	dash := simplejson.NewFromAny(map[string]any{
+		"panels": []any{
+			map[string]any{
+				"id": 1,
+				"gridPos": map[string]any{
+					"x": 0,
+					"y": 0,
+					"w": 24,
+					"h": 8,
+				},
+			},
+			map[string]any{
+				"id": 3,
+				"gridPos": map[string]any{
+					"x": 0,
+					"y": 9,
+					"w": 12,
+					"h": 15,
+				},
+			},
+			map[string]any{
+				"id": 4,
+				"gridPos": map[string]any{
+					"x": 12,
+					"y": 9,
+					"w": 12,
+					"h": 15,
+				},
+			},
+		},
+	})
+
+	hs.addGettingStartedPanelToHomeDashboard(req, dash)
+
+	panels := dash.Get("panels").MustArray()
+	require.Len(t, panels, 4)
+	assert.Equal(t, 0, simplejson.NewFromAny(panels[0]).Get("gridPos").Get("y").MustInt())
+	assert.Equal(t, 18, simplejson.NewFromAny(panels[1]).Get("gridPos").Get("y").MustInt())
+	assert.Equal(t, 18, simplejson.NewFromAny(panels[2]).Get("gridPos").Get("y").MustInt())
+	gettingStartedPanel, ok := panels[3].(*simplejson.Json)
+	require.True(t, ok)
+	assert.Equal(t, "gettingstarted", gettingStartedPanel.Get("type").MustString())
+	assert.Equal(t, 8, gettingStartedPanel.Get("gridPos").Get("y").MustInt())
+	assert.Equal(t, 9, gettingStartedPanel.Get("gridPos").Get("h").MustInt())
+}
+
 func newTestLive(t *testing.T) *live.GrafanaLive {
 	cfg := setting.NewCfg()
 	cfg.AppURL = "http://localhost:3000/"

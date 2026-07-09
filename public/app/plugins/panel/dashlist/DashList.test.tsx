@@ -1,10 +1,13 @@
-import { render, screen, testWithFeatureToggles } from 'test/test-utils';
+import { render, screen, testWithFeatureToggles, waitFor } from 'test/test-utils';
 
+import { DataFrameView, FieldType, type DataFrame } from '@grafana/data';
 import { setBackendSrv } from '@grafana/runtime';
 import { setupMockServer } from '@grafana/test-utils/server';
 import { getFolderFixtures } from '@grafana/test-utils/unstable';
 import { backendSrv } from 'app/core/services/backend_srv';
 import impressionSrv from 'app/core/services/impression_srv';
+import { getGrafanaSearcher, resetGrafanaSearcher } from 'app/features/search/service/searcher';
+import { type DashboardQueryResult, type QueryResponse } from 'app/features/search/service/types';
 
 import { getPanelProps } from '../test-utils';
 
@@ -32,6 +35,27 @@ const defaultOptions: Options = {
 const findStarButton = (title: string, isStarred: boolean) =>
   screen.findByRole('button', { name: new RegExp(`^${isStarred ? 'unmark' : 'mark'} "${title}" as favorite`, 'i') });
 
+const emptySearchResponse = (): QueryResponse => {
+  const data: DataFrame = {
+    fields: [
+      { name: 'kind', type: FieldType.string, config: {}, values: [] },
+      { name: 'name', type: FieldType.string, config: {}, values: [] },
+      { name: 'uid', type: FieldType.string, config: {}, values: [] },
+      { name: 'url', type: FieldType.string, config: {}, values: [] },
+      { name: 'tags', type: FieldType.other, config: {}, values: [] },
+      { name: 'location', type: FieldType.string, config: {}, values: [] },
+    ],
+    length: 0,
+  };
+
+  return {
+    isItemLoaded: jest.fn(),
+    loadMoreItems: jest.fn(),
+    totalRows: 0,
+    view: new DataFrameView<DashboardQueryResult>(data),
+  };
+};
+
 const fixtures: Array<
   [
     // Test title
@@ -45,6 +69,11 @@ const fixtures: Array<
 ];
 describe.each(fixtures)('%s', (_title, featureTogglesSetup) => {
   testWithFeatureToggles(featureTogglesSetup);
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    resetGrafanaSearcher();
+  });
 
   it('renders different groups of dashboards', async () => {
     const props = getPanelProps({
@@ -79,6 +108,37 @@ describe.each(fixtures)('%s', (_title, featureTogglesSetup) => {
     render(<DashList {...props} />);
 
     expect(await screen.findByText('No dashboard groups configured')).toBeInTheDocument();
+  });
+
+  it('renders create dashboard CTA when there are no dashboards', async () => {
+    jest.spyOn(getGrafanaSearcher(), 'starred').mockResolvedValue(emptySearchResponse());
+    jest.spyOn(getGrafanaSearcher(), 'search').mockResolvedValue(emptySearchResponse());
+
+    const props = getPanelProps({
+      ...defaultOptions,
+      showStarred: true,
+    });
+    render(<DashList {...props} />);
+
+    expect(await screen.findByText("You haven't created any dashboards yet")).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create your first dashboard' })).toHaveAttribute('href', 'dashboard/new');
+  });
+
+  it('does not render create dashboard CTA when dashboard groups are empty but dashboards exist', async () => {
+    jest.spyOn(getGrafanaSearcher(), 'starred').mockResolvedValue(emptySearchResponse());
+    jest.spyOn(getGrafanaSearcher(), 'search').mockResolvedValue({
+      ...emptySearchResponse(),
+      totalRows: 1,
+    });
+
+    const props = getPanelProps({
+      ...defaultOptions,
+      showStarred: true,
+    });
+    render(<DashList {...props} />);
+
+    await waitFor(() => expect(screen.queryByText("You haven't created any dashboards yet")).not.toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: 'Create your first dashboard' })).not.toBeInTheDocument();
   });
 
   it('allows un-starring a dashboard', async () => {

@@ -759,20 +759,36 @@ func (hs *HTTPServer) addGettingStartedPanelToHomeDashboard(c *contextmodel.ReqC
 	}
 
 	panels := dash.Get("panels").MustArray()
+	const gettingStartedPanelY = 8
+	const gettingStartedPanelH = 9
+	shiftPanelsAtOrBelowY(panels, gettingStartedPanelY, gettingStartedPanelH)
 
 	newpanel := simplejson.NewFromAny(map[string]any{
 		"type": "gettingstarted",
 		"id":   123123,
 		"gridPos": map[string]any{
 			"x": 0,
-			"y": 3,
+			"y": gettingStartedPanelY,
 			"w": 24,
-			"h": 9,
+			"h": gettingStartedPanelH,
 		},
 	})
 
 	panels = append(panels, newpanel)
 	dash.Set("panels", panels)
+}
+
+func shiftPanelsAtOrBelowY(panels []any, y int, offset int) {
+	for _, panel := range panels {
+		panelJSON := simplejson.NewFromAny(panel)
+
+		gridPos := panelJSON.Get("gridPos")
+		if gridPos == nil || gridPos.Get("y").MustInt() < y {
+			continue
+		}
+
+		gridPos.Set("y", gridPos.Get("y").MustInt()+offset)
+	}
 }
 
 // swagger:route GET /dashboards/uid/{uid}/versions dashboards versions getDashboardVersionsByUID

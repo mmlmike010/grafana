@@ -4,8 +4,12 @@ This repository fork uses a **minimal GitHub Actions workflow** ([`.github/workf
 
 ## What runs in CI
 
+[`.github/workflows/fieldsphere-ci.yml`](../.github/workflows/fieldsphere-ci.yml) runs on **every** `pull_request` (any base branch) and on pushes to `main` / `release-*`. That way a real CI failure on any PR can trigger Cursor **GitHub CI Auto-Fix** (workflow conclusion `failure`).
+
 - **Backend:** Four **parallel** shards (`./scripts/ci/backend-tests/shard.sh -N1/4` … `-N4/4`), each running `CGO_ENABLED=0 go test -short` on its package subset (~quarter of the tree), so wall time is roughly the slowest shard instead of one long `./...` run. A final job **Backend unit tests (short)** fails the workflow if any shard fails (single check name for branch protection).
 - **Frontend:** `yarn run prettier:check`, `yarn run lint`, then `yarn workspace @grafana/data themes-schema` (generates `schema.generated.json`, which is gitignored but required by `tsc`), then `yarn run typecheck`. Typecheck uses `NODE_OPTIONS=--max-old-space-size=6144` so `tsc` / Nx do not hit the default heap limit on standard runners.
+
+**Build Go (matrix)** is a no-op stub on this fork ([`.github/workflows/build-go-matrix.yml`](../.github/workflows/build-go-matrix.yml)); the full upstream workflow is in [`.github/workflows-upstream-archive/build-go-matrix.yml`](../.github/workflows-upstream-archive/build-go-matrix.yml). Upstream used Grafana org runners that are unavailable here and would fail every PR.
 
 Fork-local paths (`.cursor/`, `.vscode/`, and root `manifest.json`) are listed in [`.prettierignore`](../.prettierignore) so `prettier:check` matches upstream expectations without formatting IDE tooling.
 

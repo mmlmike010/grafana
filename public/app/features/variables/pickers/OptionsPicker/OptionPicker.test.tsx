@@ -46,7 +46,7 @@ function setupTestContext({ pickerState = {}, variable = {} }: Args = {}) {
   const Picker = optionPickerFactory();
   const optionsPicker: OptionsPickerState = { ...initialOptionPickerState, ...pickerState };
   const dispatch = jest.fn();
-  const subscribe = jest.fn();
+  const subscribe = jest.fn(() => jest.fn());
   const templatingState = {
     variables: {
       [v.id]: { ...v },

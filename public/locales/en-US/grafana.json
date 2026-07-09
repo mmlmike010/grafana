@@ -12437,6 +12437,10 @@
   "panel": {
     "dashlist": {
       "empty-state-message": "No dashboard groups configured",
+      "no-dashboards-primary-cta": "Create your first dashboard",
+      "no-dashboards-secondary-cta": "Import dashboard",
+      "no-dashboards-yet-body": "Spin up something new from scratch or bring in dashboards from Grafana.com.",
+      "no-dashboards-yet-heading": "You have no dashboards yet",
       "recently-viewed-dashboards": "Recently viewed dashboards",
       "search": "Search",
       "starred-dashboards": "Starred dashboards"
@@ -16582,6 +16586,14 @@
     "welcome-banner": {
       "need-help": "Need help?",
       "welcome-to-grafana": "Welcome to Grafana"
+    },
+    "hero": {
+      "need-help-label": "Need help?",
+      "primary-cta": "Create your first dashboard",
+      "sample-graph-label": "Sample metrics trend",
+      "secondary-cta": "Import dashboard",
+      "subtitle": "Build dashboards from your observability data, or import a starter to explore sample metrics quickly.",
+      "title": "Welcome to Grafana"
     }
   },
   "xychart": {

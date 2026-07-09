@@ -5,6 +5,8 @@ import { setupMockServer } from '@grafana/test-utils/server';
 import { getFolderFixtures } from '@grafana/test-utils/unstable';
 import { backendSrv } from 'app/core/services/backend_srv';
 import impressionSrv from 'app/core/services/impression_srv';
+import { resetGrafanaSearcher } from 'app/features/search/service/searcher';
+import * as searcherModule from 'app/features/search/service/searcher';
 
 import { getPanelProps } from '../test-utils';
 
@@ -29,8 +31,21 @@ const defaultOptions: Options = {
   tags: [],
 };
 
-const findStarButton = (title: string, isStarred: boolean) =>
-  screen.findByRole('button', { name: new RegExp(`^${isStarred ? 'unmark' : 'mark'} "${title}" as favorite`, 'i') });
+/** Match star/unstar by prefix + quoted title (no RegExp from dashboard titles — CWE-1333). */
+function matchesFavoriteButtonName(accessibleName: string, dashboardTitle: string, variant: 'mark' | 'unmark') {
+  const n = accessibleName.trim().toLowerCase();
+  const prefix = variant === 'unmark' ? 'unmark ' : 'mark ';
+  const titleLower = dashboardTitle.toLowerCase();
+  return (
+    n.startsWith(prefix) && n.endsWith(' as favorite') && n.includes(`"${titleLower}"`)
+  );
+}
+
+const findStarButton = (dashboardTitle: string, isStarred: boolean) =>
+  screen.findByRole('button', {
+    name: (accessibleName: string) =>
+      matchesFavoriteButtonName(accessibleName, dashboardTitle, isStarred ? 'unmark' : 'mark'),
+  });
 
 const fixtures: Array<
   [
@@ -115,7 +130,7 @@ describe.each(fixtures)('%s', (_title, featureTogglesSetup) => {
     // We use `findAll` because the dashboard will appear in two sections (starred and search)
     // but this is fine, because there will have been none before starring it
     const [unmarkButton] = await screen.findAllByRole('button', {
-      name: new RegExp(`^unmark "${dashbdE.item.title}" as favorite`, 'i'),
+      name: (accessibleName: string) => matchesFavoriteButtonName(accessibleName, dashbdE.item.title, 'unmark'),
     });
     expect(unmarkButton).toBeInTheDocument();
   });
@@ -129,5 +144,33 @@ describe.each(fixtures)('%s', (_title, featureTogglesSetup) => {
     render(<DashList {...props} />);
 
     expect(await screen.findByText(dashbdE.item.title)).toBeInTheDocument();
+  });
+});
+
+describe('DashList zero-dashboard CTA', () => {
+  beforeEach(() => {
+    jest.spyOn(searcherModule, 'getGrafanaSearcher').mockReturnValue({
+      starred: jest.fn().mockResolvedValue({ view: [] }),
+      search: jest.fn().mockResolvedValue({ view: [] }),
+    } as unknown as ReturnType<typeof searcherModule.getGrafanaSearcher>);
+    jest.spyOn(impressionSrv, 'getDashboardOpened').mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    resetGrafanaSearcher();
+  });
+
+  it('surfaces create/import actions when no dashboards are available', async () => {
+    const props = getPanelProps({
+      ...defaultOptions,
+      showHeadings: true,
+      showStarred: true,
+    });
+    render(<DashList {...props} />);
+
+    expect(await screen.findByText('You have no dashboards yet')).toBeInTheDocument();
+    expect(screen.getByTestId('dashlist-create-first-dashboard')).toHaveAttribute('href', '/dashboard/new');
+    expect(screen.getByTestId('dashlist-import-dashboard')).toHaveAttribute('href', '/dashboard/import');
   });
 });

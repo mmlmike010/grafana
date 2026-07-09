@@ -4,7 +4,7 @@ import { useThrottle } from 'react-use';
 
 import { type InterpolateFunction, type PanelProps, textUtil } from '@grafana/data';
 import { t } from '@grafana/i18n';
-import { ScrollContainer, Box, Text, EmptyState } from '@grafana/ui';
+import { ScrollContainer, Box, EmptyState, LinkButton, Stack, Text } from '@grafana/ui';
 import { getConfig } from 'app/core/config';
 import impressionSrv from 'app/core/services/impression_srv';
 import { useDashboardLocationInfo } from 'app/features/search/hooks/useDashboardLocationInfo';
@@ -111,12 +111,15 @@ const collator = new Intl.Collator();
 
 export function DashList(props: PanelProps<Options>) {
   const [dashboards, setDashboards] = useState(new Map<string, Dashboard>());
+  const [dashboardListsLoaded, setDashboardListsLoaded] = useState(false);
 
   const throttledRenderCount = useThrottle(props.renderCounter, 5000);
 
   useEffect(() => {
+    setDashboardListsLoaded(false);
     fetchDashboards(props.options, props.replaceVariables).then((dashes) => {
       setDashboards(dashes);
+      setDashboardListsLoaded(true);
     });
   }, [props.options, props.replaceVariables, throttledRenderCount]);
 
@@ -200,18 +203,45 @@ export function DashList(props: PanelProps<Options>) {
     </ul>
   );
 
-  const showEmptyState = dashboardGroups.every(({ show }) => !show);
+  const showEmptyGroupsConfig = dashboardGroups.every(({ show }) => !show);
+
+  const noDashboardEntriesYet =
+    dashboardListsLoaded && !showEmptyGroupsConfig && dashboards.size === 0;
 
   return (
     <ScrollContainer minHeight="100%">
-      {showEmptyState && (
+      {showEmptyGroupsConfig && (
         <EmptyState
           hideImage
           variant="call-to-action"
           message={t('panel.dashlist.empty-state-message', 'No dashboard groups configured')}
         />
       )}
-      {dashboardGroups.map(
+      {noDashboardEntriesYet && (
+        <EmptyState
+          hideImage
+          variant="call-to-action"
+          button={
+            <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} wrap="wrap">
+              <LinkButton href="/dashboard/new" variant="primary" data-testid="dashlist-create-first-dashboard">
+                {t('panel.dashlist.no-dashboards-primary-cta', 'Create your first dashboard')}
+              </LinkButton>
+              <LinkButton href="/dashboard/import" fill="outline" data-testid="dashlist-import-dashboard">
+                {t('panel.dashlist.no-dashboards-secondary-cta', 'Import dashboard')}
+              </LinkButton>
+            </Stack>
+          }
+          message={t('panel.dashlist.no-dashboards-yet-heading', 'You have no dashboards yet')}
+          role="alert"
+        >
+          {t(
+            'panel.dashlist.no-dashboards-yet-body',
+            'Spin up something new from scratch or bring in dashboards from Grafana.com.'
+          )}
+        </EmptyState>
+      )}
+      {!noDashboardEntriesYet &&
+        dashboardGroups.map(
         ({ show, header, dashboards }, i) =>
           show && (
             <Box marginBottom={2} paddingTop={0.5} key={`dash-group-${i}`}>

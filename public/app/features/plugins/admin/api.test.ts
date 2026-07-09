@@ -1,6 +1,9 @@
+import { of } from 'rxjs';
+
 import { getBackendSrv, type MonitoringLogger, setBackendSrv } from '@grafana/runtime';
 import { installPluginMeta, setPluginMetaLogger, uninstallPluginMeta } from '@grafana/runtime/internal';
 import { setTestFlags } from '@grafana/test-utils/unstable';
+import { configureStore } from 'app/store/configureStore';
 
 import { installPlugin, uninstallPlugin } from './api';
 
@@ -19,13 +22,24 @@ const originalFetch = global.fetch;
 
 describe('api', () => {
   let logger: MonitoringLogger;
+  let fetchMock: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    configureStore();
+    fetchMock = jest.fn().mockImplementation((opts: { url?: string; method?: string }) => {
+      if (opts.method === 'POST' && opts.url?.includes('/install')) {
+        return of({ data: {}, ok: true, status: 200 });
+      }
+      if (opts.method === 'POST' && opts.url?.includes('/uninstall')) {
+        return of({ data: {}, ok: true, status: 200 });
+      }
+      return of({ data: {}, ok: true, status: 200 });
+    });
     setBackendSrv({
       chunked: jest.fn(),
       delete: jest.fn(),
-      fetch: jest.fn(),
+      fetch: fetchMock,
       get: jest.fn(),
       patch: jest.fn(),
       post: jest.fn(),
@@ -85,11 +99,13 @@ describe('api', () => {
           headers: { 'content-type': 'application/json' },
           method: 'POST',
         });
-        expect(getBackendSrv().post).toHaveBeenCalledTimes(1);
-        expect(getBackendSrv().post).toHaveBeenCalledWith(
-          '/api/plugins/myorg-test-panel/install',
-          { version: '1.5.0' },
-          { showErrorAlert: false }
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            url: '/api/plugins/myorg-test-panel/install',
+            method: 'POST',
+            data: { version: '1.5.0' },
+            showErrorAlert: false,
+          })
         );
       });
 
@@ -100,11 +116,13 @@ describe('api', () => {
 
         expect(installPluginMetaMock).toHaveBeenCalledTimes(1);
         expect(installPluginMetaMock).toHaveBeenCalledWith('myorg-test-panel', '1.5.0');
-        expect(getBackendSrv().post).toHaveBeenCalledTimes(1);
-        expect(getBackendSrv().post).toHaveBeenCalledWith(
-          '/api/plugins/myorg-test-panel/install',
-          { version: '1.5.0' },
-          { showErrorAlert: false }
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            url: '/api/plugins/myorg-test-panel/install',
+            method: 'POST',
+            data: { version: '1.5.0' },
+            showErrorAlert: false,
+          })
         );
         expect(console.error).toHaveBeenCalledTimes(1);
         expect(console.error).toHaveBeenCalledWith(
@@ -134,8 +152,12 @@ describe('api', () => {
           'apis/plugins.grafana.app/v0alpha1/namespaces/default/plugins/myorg-test-panel',
           { method: 'DELETE' }
         );
-        expect(getBackendSrv().post).toHaveBeenCalledTimes(1);
-        expect(getBackendSrv().post).toHaveBeenCalledWith('/api/plugins/myorg-test-panel/uninstall');
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            url: '/api/plugins/myorg-test-panel/uninstall',
+            method: 'POST',
+          })
+        );
       });
 
       it('should call legacy api when uninstallPluginMeta fails but log failure', async () => {
@@ -145,7 +167,12 @@ describe('api', () => {
 
         expect(uninstallPluginMetaMock).toHaveBeenCalledTimes(1);
         expect(uninstallPluginMetaMock).toHaveBeenCalledWith('myorg-test-panel');
-        expect(getBackendSrv().post).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            url: '/api/plugins/myorg-test-panel/uninstall',
+            method: 'POST',
+          })
+        );
         expect(console.error).toHaveBeenCalledTimes(1);
         expect(console.error).toHaveBeenCalledWith(
           'PluginMeta: Failed to uninstall plugin with id myorg-test-panel',
@@ -180,11 +207,13 @@ describe('api', () => {
         expect(installPluginMetaMock).toHaveBeenCalledTimes(1);
         expect(installPluginMetaMock).toHaveBeenCalledWith('myorg-test-panel', '1.5.0');
         expect(global.fetch).not.toHaveBeenCalled(); // no call to fetch is made because of feature flag check in installPluginMeta
-        expect(getBackendSrv().post).toHaveBeenCalledTimes(1);
-        expect(getBackendSrv().post).toHaveBeenCalledWith(
-          '/api/plugins/myorg-test-panel/install',
-          { version: '1.5.0' },
-          { showErrorAlert: false }
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            url: '/api/plugins/myorg-test-panel/install',
+            method: 'POST',
+            data: { version: '1.5.0' },
+            showErrorAlert: false,
+          })
         );
       });
     });
@@ -196,8 +225,12 @@ describe('api', () => {
         expect(uninstallPluginMetaMock).toHaveBeenCalledTimes(1);
         expect(uninstallPluginMetaMock).toHaveBeenCalledWith('myorg-test-panel');
         expect(global.fetch).not.toHaveBeenCalled(); // no call to fetch is made because of feature flag check in uninstallPluginMeta
-        expect(getBackendSrv().post).toHaveBeenCalledTimes(1);
-        expect(getBackendSrv().post).toHaveBeenCalledWith('/api/plugins/myorg-test-panel/uninstall');
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            url: '/api/plugins/myorg-test-panel/uninstall',
+            method: 'POST',
+          })
+        );
       });
     });
   });

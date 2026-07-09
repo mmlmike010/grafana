@@ -9,6 +9,7 @@ import { allMiddleware as allApiClientMiddleware } from '@grafana/api-clients/rt
 import { legacyAPI } from 'app/api/clients/legacy';
 import { scopeAPIv0alpha1 } from 'app/api/clients/scope/v0alpha1';
 import { browseDashboardsAPI } from 'app/features/browse-dashboards/api/browseDashboardsAPI';
+import { pluginAdminApi } from 'app/features/plugins/admin/api/pluginAdminApi';
 import { publicDashboardApi } from 'app/features/dashboard/api/publicDashboardApi';
 import { type StoreState } from 'app/types/store';
 
@@ -41,6 +42,8 @@ export function configureStore(initialState?: Partial<StoreState>) {
 
         // older internal alerting API client
         alertingApi.middleware,
+
+        pluginAdminApi.middleware,
 
         // API clients that are not in the api-clients package
         // Anything here is likely to be deprecated

@@ -12,6 +12,7 @@ import {
 import { GrafanaEdition } from '@grafana/data/internal';
 import { selectors } from '@grafana/e2e-selectors';
 import { config, getBackendSrv, setBackendSrv } from '@grafana/runtime';
+import { backendSrv } from 'app/core/services/backend_srv';
 import { configureStore } from 'app/store/configureStore';
 
 import * as api from '../api';
@@ -67,13 +68,20 @@ describe('Plugin details page', () => {
   const id = 'my-plugin';
   const originalWindowLocation = window.location;
   let dateNow: jest.SpyInstance<number, []>;
-  const originalBackendSrv = getBackendSrv();
+  let originalBackendSrv: ReturnType<typeof getBackendSrv>;
 
   beforeAll(() => {
     dateNow = jest.spyOn(Date, 'now').mockImplementation(() => 1609470000000); // 2021-01-01 04:00:00
 
     // Enabling / disabling the plugin is currently reloading the page to propagate the changes
     Object.defineProperty(window, 'location', { configurable: true, value: { reload: jest.fn() } });
+  });
+
+  beforeEach(() => {
+    setBackendSrv(backendSrv);
+    originalBackendSrv = getBackendSrv();
+    // Plugin admin uses RTK Query + backendSrv.fetch; stub HTTP so tests stay offline.
+    mockPluginApis({ remote: { slug: 'my-plugin' }, local: { id: 'my-plugin' } });
   });
 
   afterEach(() => {
@@ -370,8 +378,6 @@ describe('Plugin details page', () => {
     it('should show a confirm modal when trying to uninstall a plugin', async () => {
       // @ts-ignore
       api.uninstallPlugin = jest.fn();
-
-      setBackendSrv({ ...originalBackendSrv, get: jest.fn().mockResolvedValue({ panels: [] }) });
 
       const { queryByText, getByRole, findByRole, user } = renderPluginDetails({
         id,

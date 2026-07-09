@@ -89,6 +89,7 @@ export interface CatalogPluginDetails {
   sponsorshipUrl?: string;
   repositoryUrl?: string;
   raiseAnIssueUrl?: string;
+  orgUrl?: string;
   signatureType?: PluginSignatureType;
   signature?: PluginSignatureStatus;
   screenshots?: Screenshots[] | null;
@@ -300,6 +301,42 @@ export enum PluginStatus {
   UPDATE = 'UPDATE',
   REINSTALL = 'REINSTALL',
   DOWNGRADE = 'DOWNGRADE',
+}
+
+export enum InstallReadinessSeverity {
+  Ready = 'ready',
+  Warning = 'warning',
+  Blocked = 'blocked',
+}
+
+export type InstallReadinessReason =
+  | 'ready'
+  | 'renderer'
+  | 'enterprise_unlicensed'
+  | 'dev'
+  | 'no_permission'
+  | 'not_published'
+  | 'incompatible_version'
+  | 'remote_unavailable'
+  | 'core'
+  | 'disabled'
+  | 'provisioned'
+  | 'catalog_disabled'
+  | 'angular_detected'
+  | 'unsigned'
+  | 'invalid_signature';
+
+export interface InstallReadinessResult {
+  severity: InstallReadinessSeverity;
+  reason: InstallReadinessReason;
+  label: string;
+  signatureStatus: PluginSignatureStatus;
+  latestCompatibleVersion?: Version;
+  grafanaDependency?: string;
+  hasChangelog?: boolean;
+  maintainerUrl?: string;
+  sourceUrl?: string;
+  hasInstallWarning: boolean;
 }
 
 export enum PluginTabLabels {

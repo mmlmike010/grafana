@@ -1,6 +1,7 @@
 import { render, screen } from 'test/test-utils';
 
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType } from '@grafana/data';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import * as helpers from '../helpers';
 import * as hooks from '../state/hooks';
@@ -17,6 +18,7 @@ describe('PluginActions', () => {
     jest.spyOn(helpers, 'isInstallControlsEnabled').mockReturnValue(true);
     jest.spyOn(helpers, 'hasInstallControlWarning').mockReturnValue(false);
     jest.spyOn(hooks, 'useIsRemotePluginsAvailable').mockReturnValue(true);
+    jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -33,7 +35,15 @@ describe('PluginActions', () => {
     it('should render install button for non-installed plugin', () => {
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
+      expect(screen.getByTestId('plugin-install-readiness-indicator')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+    });
+
+    it('should render warning readiness indicator when plugin is incompatible', () => {
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(undefined);
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(screen.getByTestId('plugin-install-readiness-indicator')).toHaveTextContent('Incompatible');
     });
 
     it('should render uninstall button for installed plugin', () => {
@@ -263,6 +273,17 @@ function createPluginStub(overrides?: Partial<CatalogPlugin>): CatalogPlugin {
     isEnterprise: false,
     isDeprecated: false,
     isPreinstalled: { found: false, withVersion: false },
+    details: {
+      links: [],
+      versions: [
+        {
+          version: '1.0.0',
+          createdAt: '',
+          isCompatible: true,
+          grafanaDependency: '>=9.0.0',
+        },
+      ],
+    },
     ...overrides,
   };
 }

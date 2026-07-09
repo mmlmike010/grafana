@@ -1,6 +1,7 @@
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType, PluginType } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { setTestFlags } from '@grafana/test-utils/unstable';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import {
   mapToCatalogPlugin,
@@ -14,6 +15,11 @@ import {
   isRemotePluginVisibleByConfig,
   isNonAngularVersion,
   isDisabledAngularPlugin,
+  getInstallReadiness,
+  getInstallDeflectionReason,
+  getInstallDeflectionReasonForTelemetry,
+  hasInstallControlWarning,
+  getInstallReadinessLabel,
 } from './helpers';
 import { getLocalPluginMock, getRemotePluginMock, getCatalogPluginMock } from './mocks/mockHelpers';
 import {
@@ -23,6 +29,7 @@ import {
   type Version,
   type CatalogPlugin,
   PluginUpdateStrategy,
+  InstallReadinessSeverity,
 } from './types';
 
 describe('Plugins/Helpers', () => {
@@ -1073,6 +1080,167 @@ describe('Plugins/Helpers', () => {
     it('should return false for plugins that are not disabled', () => {
       const plugin = { isDisabled: false, error: undefined } as CatalogPlugin;
       expect(isDisabledAngularPlugin(plugin)).toBe(false);
+    });
+  });
+
+  describe('getInstallReadiness()', () => {
+    const compatibleVersion: Version = {
+      version: '1.0.0',
+      createdAt: '',
+      isCompatible: true,
+      grafanaDependency: '>=9.0.0',
+    };
+
+    beforeEach(() => {
+      config.pluginAdminEnabled = true;
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns ready for an installable plugin with a valid signature', () => {
+      const plugin = getCatalogPluginMock({ isInstalled: false, signature: PluginSignatureStatus.valid });
+
+      expect(
+        getInstallReadiness({
+          plugin,
+          latestCompatibleVersion: compatibleVersion,
+          isRemotePluginsAvailable: true,
+        })
+      ).toMatchObject({
+        severity: InstallReadinessSeverity.Ready,
+        reason: 'ready',
+        label: 'Ready',
+        hasInstallWarning: false,
+      });
+    });
+
+    it('returns warning for an unsigned plugin that is otherwise installable', () => {
+      const plugin = getCatalogPluginMock({ isInstalled: false, signature: PluginSignatureStatus.missing });
+
+      expect(
+        getInstallReadiness({
+          plugin,
+          latestCompatibleVersion: compatibleVersion,
+          isRemotePluginsAvailable: true,
+        })
+      ).toMatchObject({
+        severity: InstallReadinessSeverity.Warning,
+        reason: 'unsigned',
+        label: 'Unsigned',
+      });
+    });
+
+    it('returns warning when no compatible version is available', () => {
+      const plugin = getCatalogPluginMock({ isInstalled: false });
+
+      expect(
+        getInstallReadiness({
+          plugin,
+          latestCompatibleVersion: undefined,
+          isRemotePluginsAvailable: true,
+        })
+      ).toMatchObject({
+        severity: InstallReadinessSeverity.Warning,
+        reason: 'incompatible_version',
+        hasInstallWarning: true,
+      });
+    });
+
+    it('returns blocked for core plugins that are not installed', () => {
+      const plugin = getCatalogPluginMock({ isInstalled: false, isCore: true });
+
+      expect(
+        getInstallReadiness({
+          plugin,
+          latestCompatibleVersion: compatibleVersion,
+          isRemotePluginsAvailable: true,
+        })
+      ).toMatchObject({
+        severity: InstallReadinessSeverity.Blocked,
+        reason: 'core',
+      });
+    });
+  });
+
+  describe('getInstallDeflectionReason()', () => {
+    const compatibleVersion: Version = {
+      version: '1.0.0',
+      createdAt: '',
+      isCompatible: true,
+      grafanaDependency: '>=9.0.0',
+    };
+
+    beforeEach(() => {
+      config.pluginAdminEnabled = true;
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns null for installed plugins', () => {
+      const plugin = getCatalogPluginMock({ isInstalled: true });
+
+      expect(
+        getInstallDeflectionReason({
+          plugin,
+          latestCompatibleVersion: compatibleVersion,
+          isRemotePluginsAvailable: true,
+        })
+      ).toBeNull();
+    });
+
+    it('returns incompatible_version when no compatible version exists', () => {
+      const plugin = getCatalogPluginMock({ isInstalled: false });
+
+      expect(
+        getInstallDeflectionReasonForTelemetry({
+          plugin,
+          latestCompatibleVersion: undefined,
+          isRemotePluginsAvailable: true,
+        })
+      ).toBe('incompatible_version');
+    });
+  });
+
+  describe('hasInstallControlWarning()', () => {
+    const compatibleVersion: Version = {
+      version: '1.0.0',
+      createdAt: '',
+      isCompatible: true,
+      grafanaDependency: '>=9.0.0',
+    };
+
+    beforeEach(() => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns true for renderer plugins even when installed', () => {
+      const plugin = getCatalogPluginMock({ isInstalled: true, type: PluginType.renderer });
+
+      expect(hasInstallControlWarning(plugin, true, compatibleVersion)).toBe(true);
+    });
+
+    it('returns false for installable plugins', () => {
+      const plugin = getCatalogPluginMock({ isInstalled: false, type: PluginType.app });
+
+      expect(hasInstallControlWarning(plugin, true, compatibleVersion)).toBe(false);
+    });
+  });
+
+  describe('getInstallReadinessLabel()', () => {
+    it('returns human-readable labels for known reasons', () => {
+      expect(getInstallReadinessLabel('ready')).toBe('Ready');
+      expect(getInstallReadinessLabel('incompatible_version')).toBe('Incompatible');
+      expect(getInstallReadinessLabel('unsigned')).toBe('Unsigned');
     });
   });
 });

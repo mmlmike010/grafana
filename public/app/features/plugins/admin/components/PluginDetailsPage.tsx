@@ -1,5 +1,6 @@
 import { css } from '@emotion/css';
 import * as React from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom-v5-compat';
 import { useMedia } from 'react-use';
 
@@ -14,9 +15,17 @@ import { PluginDetailsBody } from '../components/PluginDetailsBody';
 import { PluginDetailsDisabledError } from '../components/PluginDetailsDisabledError';
 import { PluginDetailsPanel } from '../components/PluginDetailsPanel';
 import { PluginDetailsSignature } from '../components/PluginDetailsSignature';
+import { getInstallDeflectionReasonForTelemetry, getLatestCompatibleVersion } from '../helpers';
 import { usePluginDetailsTabs } from '../hooks/usePluginDetailsTabs';
 import { usePluginPageExtensions } from '../hooks/usePluginPageExtensions';
-import { useGetSingle, useFetchStatus, useFetchDetailsStatus, useGetPluginInsights } from '../state/hooks';
+import {
+  useGetSingle,
+  useFetchStatus,
+  useFetchDetailsStatus,
+  useGetPluginInsights,
+  useIsRemotePluginsAvailable,
+} from '../state/hooks';
+import { trackPluginInstallDeflected } from '../tracking';
 
 import { PluginDetailsDeprecatedWarning } from './PluginDetailsDeprecatedWarning';
 
@@ -55,7 +64,41 @@ export function PluginDetailsPage({
   const { actions, info, subtitle } = usePluginPageExtensions(plugin);
   const { isLoading: isFetchLoading } = useFetchStatus();
   const { isLoading: isFetchDetailsLoading } = useFetchDetailsStatus();
+  const isRemotePluginsAvailable = useIsRemotePluginsAvailable();
   const styles = useStyles2(getStyles);
+  const trackedDeflectionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!plugin || isFetchLoading || isFetchDetailsLoading) {
+      return;
+    }
+
+    const latestCompatibleVersion = getLatestCompatibleVersion(plugin.details?.versions);
+    const deflectionReason = getInstallDeflectionReasonForTelemetry({
+      plugin,
+      latestCompatibleVersion,
+      isRemotePluginsAvailable,
+    });
+
+    if (!deflectionReason) {
+      return;
+    }
+
+    const trackingKey = `${plugin.id}:${location.pathname}`;
+    if (trackedDeflectionRef.current === trackingKey) {
+      return;
+    }
+
+    trackedDeflectionRef.current = trackingKey;
+    trackPluginInstallDeflected({
+      plugin_id: plugin.id,
+      plugin_type: plugin.type,
+      path: location.pathname,
+      deflection_reason: deflectionReason,
+      creator_team: 'grafana_plugins_catalog',
+      schema_version: '1.0.0',
+    });
+  }, [plugin, isFetchLoading, isFetchDetailsLoading, isRemotePluginsAvailable, location.pathname]);
 
   if (isFetchLoading || isFetchDetailsLoading) {
     return (

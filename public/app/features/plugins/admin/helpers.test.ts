@@ -1,6 +1,7 @@
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType, PluginType } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { setTestFlags } from '@grafana/test-utils/unstable';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import {
   mapToCatalogPlugin,
@@ -14,6 +15,11 @@ import {
   isRemotePluginVisibleByConfig,
   isNonAngularVersion,
   isDisabledAngularPlugin,
+  getInstallControlWarningReason,
+  getInstallReadiness,
+  getInstallReadinessSignatureState,
+  hasInstallControlWarning,
+  InstallReadinessBlockerReason,
 } from './helpers';
 import { getLocalPluginMock, getRemotePluginMock, getCatalogPluginMock } from './mocks/mockHelpers';
 import {
@@ -231,6 +237,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',
@@ -457,6 +464,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',
@@ -1073,6 +1081,179 @@ describe('Plugins/Helpers', () => {
     it('should return false for plugins that are not disabled', () => {
       const plugin = { isDisabled: false, error: undefined } as CatalogPlugin;
       expect(isDisabledAngularPlugin(plugin)).toBe(false);
+    });
+  });
+});
+
+function createReadinessPluginStub(overrides?: Partial<CatalogPlugin>): CatalogPlugin {
+  return {
+    managed: { enabled: false, strategy: undefined },
+    name: 'Test Plugin',
+    id: 'test-plugin',
+    description: 'Test plugin',
+    isCore: false,
+    isInstalled: false,
+    isDisabled: false,
+    isProvisioned: false,
+    hasUpdate: false,
+    signature: PluginSignatureStatus.valid,
+    signatureType: PluginSignatureType.grafana,
+    signatureOrg: 'grafana',
+    info: { logos: { small: '', large: '' }, keywords: [] },
+    error: undefined,
+    downloads: 0,
+    popularity: 0,
+    orgName: 'Test Org',
+    publishedAt: '',
+    updatedAt: '',
+    isPublished: true,
+    isDev: false,
+    isEnterprise: false,
+    isDeprecated: false,
+    isPreinstalled: { found: false, withVersion: false },
+    ...overrides,
+  };
+}
+
+function createReadinessVersion(overrides?: Partial<Version>): Version {
+  return {
+    version: '1.0.0',
+    createdAt: '',
+    updatedAt: '',
+    isCompatible: true,
+    grafanaDependency: '>=10.0.0',
+    angularDetected: false,
+    ...overrides,
+  };
+}
+
+describe('plugin install readiness helpers', () => {
+  beforeEach(() => {
+    jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    config.pluginAdminExternalManageEnabled = false;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('getInstallReadinessSignatureState()', () => {
+    it.each([
+      [PluginSignatureStatus.valid, 'signed'],
+      [PluginSignatureStatus.internal, 'internal'],
+      [PluginSignatureStatus.invalid, 'invalid'],
+      [PluginSignatureStatus.modified, 'invalid'],
+      [PluginSignatureStatus.missing, 'unsigned'],
+      [undefined, 'unsigned'],
+    ])('maps %s to %s', (status, expected) => {
+      expect(getInstallReadinessSignatureState(status as PluginSignatureStatus)).toBe(expected);
+    });
+  });
+
+  describe('getInstallControlWarningReason()', () => {
+    it('returns undefined for a compatible, published, signed plugin', () => {
+      expect(getInstallControlWarningReason(createReadinessPluginStub(), true, createReadinessVersion())).toBeUndefined();
+    });
+
+    it('flags renderer plugins', () => {
+      const plugin = createReadinessPluginStub({ type: PluginType.renderer });
+      expect(getInstallControlWarningReason(plugin, true, createReadinessVersion())).toBe(
+        InstallReadinessBlockerReason.RendererUnsupported
+      );
+    });
+
+    it('flags unlicensed enterprise plugins', () => {
+      const plugin = createReadinessPluginStub({ isEnterprise: true });
+      expect(getInstallControlWarningReason(plugin, true, createReadinessVersion())).toBe(
+        InstallReadinessBlockerReason.EnterpriseUnlicensed
+      );
+    });
+
+    it('flags missing install permission', () => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(false);
+      expect(getInstallControlWarningReason(createReadinessPluginStub(), true, createReadinessVersion())).toBe(
+        InstallReadinessBlockerReason.NoPermission
+      );
+    });
+
+    it('flags unpublished plugins', () => {
+      const plugin = createReadinessPluginStub({ isPublished: false });
+      expect(getInstallControlWarningReason(plugin, true, createReadinessVersion())).toBe(
+        InstallReadinessBlockerReason.NotPublished
+      );
+    });
+
+    it('flags incompatible plugins (no compatible version)', () => {
+      expect(getInstallControlWarningReason(createReadinessPluginStub(), true, undefined)).toBe(
+        InstallReadinessBlockerReason.IncompatibleVersion
+      );
+    });
+
+    it('flags when remote plugins are unavailable', () => {
+      expect(getInstallControlWarningReason(createReadinessPluginStub(), false, createReadinessVersion())).toBe(
+        InstallReadinessBlockerReason.RemoteUnavailable
+      );
+    });
+
+    it('keeps hasInstallControlWarning in sync with the reason', () => {
+      expect(hasInstallControlWarning(createReadinessPluginStub({ isPublished: false }), true, createReadinessVersion())).toBe(
+        true
+      );
+      expect(hasInstallControlWarning(createReadinessPluginStub(), true, createReadinessVersion())).toBe(false);
+    });
+  });
+
+  describe('getInstallReadiness()', () => {
+    it('reports an installable, compatible, signed plugin', () => {
+      const readiness = getInstallReadiness(createReadinessPluginStub(), true, createReadinessVersion({ version: '2.0.0' }));
+
+      expect(readiness).toMatchObject({
+        canInstall: true,
+        blockerReason: undefined,
+        isCompatible: true,
+        latestCompatibleVersion: '2.0.0',
+        grafanaDependency: '>=10.0.0',
+        signatureState: 'signed',
+      });
+    });
+
+    it('falls back to plugin details grafana dependency when version has none', () => {
+      const plugin = createReadinessPluginStub({ details: { links: [], grafanaDependency: '>=9.5.0' } });
+      const readiness = getInstallReadiness(plugin, true, createReadinessVersion({ grafanaDependency: null }));
+
+      expect(readiness.grafanaDependency).toBe('>=9.5.0');
+    });
+
+    it('treats an invalid signature as a blocker', () => {
+      const plugin = createReadinessPluginStub({ signature: PluginSignatureStatus.invalid });
+      const readiness = getInstallReadiness(plugin, true, createReadinessVersion());
+
+      expect(readiness.canInstall).toBe(false);
+      expect(readiness.blockerReason).toBe(InstallReadinessBlockerReason.InvalidSignature);
+      expect(readiness.signatureState).toBe('invalid');
+    });
+
+    it('prefers a control blocker over the signature blocker', () => {
+      const plugin = createReadinessPluginStub({ isPublished: false, signature: PluginSignatureStatus.invalid });
+      const readiness = getInstallReadiness(plugin, true, createReadinessVersion());
+
+      expect(readiness.blockerReason).toBe(InstallReadinessBlockerReason.NotPublished);
+    });
+
+    it('reports incompatibility when no compatible version exists', () => {
+      const readiness = getInstallReadiness(createReadinessPluginStub(), true, undefined);
+
+      expect(readiness.canInstall).toBe(false);
+      expect(readiness.isCompatible).toBe(false);
+      expect(readiness.blockerReason).toBe(InstallReadinessBlockerReason.IncompatibleVersion);
+    });
+  });
+
+  describe('mapRemoteToCatalog() orgUrl mapping', () => {
+    it('maps the remote orgUrl onto the catalog plugin', () => {
+      const remote = getRemotePluginMock();
+      const catalog = mapRemoteToCatalog(remote);
+      expect(catalog.orgUrl).toBe(remote.orgUrl);
     });
   });
 });

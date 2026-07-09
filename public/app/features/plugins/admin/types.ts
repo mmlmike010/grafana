@@ -65,6 +65,9 @@ export interface CatalogPlugin extends WithAccessControlMetadata {
   iam?: IdentityAccessManagement;
   isProvisioned?: boolean;
   url?: string;
+  // The maintainer/organization URL (sourced from `RemotePlugin.orgUrl`), used
+  // to link administrators to maintainer/source information.
+  orgUrl?: string;
   managed: {
     enabled: boolean;
     strategy?: PluginUpdateStrategy;

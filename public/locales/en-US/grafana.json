@@ -12843,6 +12843,28 @@
       "title-remote-plugins-unavailable": "The install controls have been disabled because the Grafana server cannot access grafana.com.",
       "title-renderer-plugins-cannot-managed-plugin-catalog": "Renderer plugins cannot be managed by the Plugin Catalog."
     },
+    "install-readiness-card": {
+      "blocker-dev": "This is a development build and cannot be managed.",
+      "blocker-enterprise": "This plugin requires a Grafana Enterprise or Cloud license.",
+      "blocker-generic": "This plugin cannot be installed.",
+      "blocker-incompatible": "No compatible version is available for your Grafana version.",
+      "blocker-invalid-signature": "This plugin has an invalid signature and cannot be installed.",
+      "blocker-not-published": "This plugin is not published to grafana.com and cannot be installed via the catalog.",
+      "blocker-permission": "You do not have permission to install this plugin.",
+      "blocker-remote-unavailable": "Install controls are disabled because Grafana cannot reach grafana.com.",
+      "blocker-renderer": "Renderer plugins cannot be managed by the Plugin Catalog.",
+      "changelog": "Changelog",
+      "compatible": "Compatible version {{version}} available",
+      "dependency-range": "Requires Grafana {{range}}",
+      "incompatible": "No version compatible with Grafana {{version}}",
+      "maintainer": "Maintainer",
+      "signature-internal": "Core (internal) plugin",
+      "signature-invalid": "Invalid plugin signature",
+      "signature-signed": "Signed plugin",
+      "signature-unsigned": "Unsigned plugin",
+      "source": "Source",
+      "title": "Install readiness"
+    },
     "log-view-filters": {
       "label-extension": "Extension",
       "label-plugin-id": "Plugin Id",

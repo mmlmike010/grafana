@@ -166,9 +166,11 @@ describe('Plugin details page', () => {
         ],
       };
 
-      const { findByText, queryByText } = renderPluginDetails({ id, details });
+      const { findByText, queryAllByText } = renderPluginDetails({ id, details });
       expect(await findByText('4.2.2')).toBeInTheDocument();
-      expect(queryByText(/>=8.0.0/i)).toBeInTheDocument();
+      // The compatible Grafana dependency is now surfaced in both the header and
+      // the install readiness card, so assert it appears at least once.
+      expect(queryAllByText(/>=8.0.0/i).length).toBeGreaterThan(0);
     });
 
     it('should display description in the header', async () => {

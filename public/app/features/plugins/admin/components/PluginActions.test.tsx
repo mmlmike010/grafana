@@ -1,10 +1,12 @@
 import { render, screen } from 'test/test-utils';
 
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType } from '@grafana/data';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import * as helpers from '../helpers';
 import * as hooks from '../state/hooks';
 import { initialState } from '../state/reducer';
+import * as tracking from '../tracking';
 import { type CatalogPlugin, PluginStatus, type ReducerState, type Version } from '../types';
 
 import { getInstallControlsDisabled, getPluginStatus, PluginActions } from './PluginActions';
@@ -104,6 +106,58 @@ describe('PluginActions', () => {
       render(<PluginActions plugin={disabledAngularPlugin} />, { preloadedState: { plugins } });
 
       expect(screen.queryByRole('button', { name: /install|uninstall|update/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('install readiness', () => {
+    it('renders the install readiness card for a non-installed plugin', () => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(createVersion({ grafanaDependency: '>=9.0.0' }));
+
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(screen.getByTestId('plugin-install-readiness')).toBeInTheDocument();
+    });
+
+    it('does not render the readiness card for an installed plugin', () => {
+      render(<PluginActions plugin={createPluginStub({ isInstalled: true })} />, { preloadedState: { plugins } });
+
+      expect(screen.queryByTestId('plugin-install-readiness')).not.toBeInTheDocument();
+    });
+
+    it('tracks a deflection when a non-installed plugin cannot be installed', () => {
+      const trackSpy = jest.spyOn(tracking, 'trackPluginInstallDeflected');
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+      // No compatible version available => incompatible blocker.
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(undefined);
+
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(trackSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          plugin_id: 'test-plugin',
+          blocker_reason: helpers.InstallReadinessBlockerReason.IncompatibleVersion,
+        })
+      );
+    });
+
+    it('does not track a deflection when the plugin can be installed', () => {
+      const trackSpy = jest.spyOn(tracking, 'trackPluginInstallDeflected');
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(createVersion());
+
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(trackSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not track a deflection for an installed plugin', () => {
+      const trackSpy = jest.spyOn(tracking, 'trackPluginInstallDeflected');
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(undefined);
+
+      render(<PluginActions plugin={createPluginStub({ isInstalled: true })} />, { preloadedState: { plugins } });
+
+      expect(trackSpy).not.toHaveBeenCalled();
     });
   });
 

@@ -45,6 +45,8 @@ export interface CatalogPlugin extends WithAccessControlMetadata {
   latestVersion?: string;
   name: string;
   orgName: string;
+  /** Maintainer / publisher homepage from grafana.com when available */
+  orgUrl?: string;
   signature: PluginSignatureStatus;
   signatureType?: PluginSignatureType;
   signatureOrg?: string;

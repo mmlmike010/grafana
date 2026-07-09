@@ -9,10 +9,23 @@ type PluginTrackingProps = {
   path: string;
 };
 
+type PluginInstallDeflectedProps = PluginTrackingProps & {
+  // Why install was deflected (e.g. incompatible, unsigned)
+  reason: string;
+  // ready | warning | blocked
+  status: string;
+  creator_team?: string;
+  schema_version?: string;
+};
+
 export const trackPluginInstalled = (props: PluginTrackingProps) => {
   reportInteraction('grafana_plugin_install_clicked', props);
 };
 
 export const trackPluginUninstalled = (props: PluginTrackingProps) => {
   reportInteraction('grafana_plugin_uninstall_clicked', props);
+};
+
+export const trackPluginInstallDeflected = (props: PluginInstallDeflectedProps) => {
+  reportInteraction('grafana_plugin_install_deflected', props);
 };

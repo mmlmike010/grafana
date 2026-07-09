@@ -128,6 +128,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     },
     name,
     orgName,
+    orgUrl: plugin.orgUrl || undefined,
     popularity,
     publishedAt,
     signature: getPluginSignature({ remote: plugin, error }),
@@ -261,6 +262,7 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     name: remote?.name || local?.name || '',
     // TODO<check if we would like to keep preferring the remote version>
     orgName: remote?.orgName || local?.info.author.name || '',
+    orgUrl: remote?.orgUrl || undefined,
     popularity: remote?.popularity || 0,
     publishedAt: remote?.createdAt || '',
     type,
@@ -360,6 +362,110 @@ export function getLatestCompatibleVersion(versions: Version[] | undefined): Ver
   const [latest] = versions.filter((v) => Boolean(v.isCompatible));
 
   return latest;
+}
+
+export type InstallReadinessStatus = 'ready' | 'warning' | 'blocked';
+
+export type InstallReadinessReason =
+  | 'incompatible'
+  | 'unsigned'
+  | 'invalid_signature'
+  | 'modified_signature'
+  | 'unpublished'
+  | 'no_permission'
+  | 'enterprise_unlicensed'
+  | 'dev_plugin'
+  | 'renderer'
+  | 'remote_unavailable';
+
+export type InstallReadiness = {
+  status: InstallReadinessStatus;
+  reasons: InstallReadinessReason[];
+  latestCompatibleVersion?: Version;
+  grafanaDependency?: string;
+  signature: PluginSignatureStatus;
+  orgName?: string;
+  orgUrl?: string;
+  hasChangelog: boolean;
+};
+
+/**
+ * Summarizes compatibility and signature posture for the plugin detail header
+ * install-readiness indicator (KAN-1).
+ */
+export function getInstallReadiness(
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion = getLatestCompatibleVersion(plugin.details?.versions)
+): InstallReadiness {
+  const reasons: InstallReadinessReason[] = [];
+  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
+  const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
+  const signature = plugin.signature;
+  const grafanaDependency =
+    latestCompatibleVersion?.grafanaDependency || plugin.details?.grafanaDependency;
+
+  if (plugin.type === PluginType.renderer) {
+    reasons.push('renderer');
+  }
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) {
+    reasons.push('enterprise_unlicensed');
+  }
+  if (plugin.isDev) {
+    reasons.push('dev_plugin');
+  }
+  if (!hasPermission && !isExternallyManaged) {
+    reasons.push('no_permission');
+  }
+  if (!plugin.isPublished) {
+    reasons.push('unpublished');
+  }
+  if (!latestCompatibleVersion) {
+    reasons.push('incompatible');
+  }
+  if (!isRemotePluginsAvailable) {
+    reasons.push('remote_unavailable');
+  }
+
+  if (signature === PluginSignatureStatus.invalid) {
+    reasons.push('invalid_signature');
+  } else if (signature === PluginSignatureStatus.modified) {
+    reasons.push('modified_signature');
+  } else if (signature === PluginSignatureStatus.missing) {
+    reasons.push('unsigned');
+  }
+
+  const hasBlockingReason = reasons.some((reason) =>
+    [
+      'incompatible',
+      'invalid_signature',
+      'modified_signature',
+      'renderer',
+      'enterprise_unlicensed',
+      'unpublished',
+      'no_permission',
+      'remote_unavailable',
+    ].includes(reason)
+  );
+  const hasWarningReason = reasons.includes('unsigned') || reasons.includes('dev_plugin');
+
+  let status: InstallReadinessStatus = 'ready';
+  if (hasBlockingReason) {
+    status = 'blocked';
+  } else if (hasWarningReason) {
+    status = 'warning';
+  }
+
+  return {
+    status,
+    reasons,
+    latestCompatibleVersion,
+    grafanaDependency,
+    signature,
+    orgName: plugin.orgName,
+    orgUrl: plugin.orgUrl,
+    hasChangelog: Boolean(plugin.details?.changelog) && !plugin.isCore && plugin.isPublished,
+  };
 }
 
 export const isInstallControlsEnabled = () => config.pluginAdminEnabled;

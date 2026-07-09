@@ -65,6 +65,7 @@ export interface CatalogPlugin extends WithAccessControlMetadata {
   iam?: IdentityAccessManagement;
   isProvisioned?: boolean;
   url?: string;
+  orgUrl?: string;
   managed: {
     enabled: boolean;
     strategy?: PluginUpdateStrategy;

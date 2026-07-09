@@ -1,6 +1,12 @@
 import uFuzzy from '@leeoniya/ufuzzy';
 
-import { PluginSignatureStatus, dateTimeParse, type PluginError, PluginType, PluginErrorCode } from '@grafana/data';
+import {
+  PluginSignatureStatus,
+  dateTimeParse,
+  type PluginError,
+  PluginType,
+  PluginErrorCode,
+} from '@grafana/data';
 import { config, featureEnabled } from '@grafana/runtime';
 import { getFeatureFlagClient } from '@grafana/runtime/internal';
 import { contextSrv } from 'app/core/services/context_srv';
@@ -110,6 +116,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     versionSignatureType,
     versionSignedByOrgName,
     url,
+    orgUrl,
   } = plugin;
 
   const isDisabled = !!error;
@@ -149,6 +156,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     isFullyInstalled: isDisabled,
     latestVersion: plugin.version,
     url,
+    orgUrl: orgUrl || undefined,
     managed: {
       enabled: managedPluginsV2Enabled ? Boolean(plugin.managed?.enabled) : isManagedPlugin(id),
       strategy: managedPluginsV2Enabled
@@ -278,6 +286,7 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     iam: local?.iam,
     latestVersion: local?.latestVersion || remote?.version || '',
     url: remote?.url || '',
+    orgUrl: remote?.orgUrl || undefined,
     managed: {
       enabled: managedPluginsV2Enabled ? Boolean(remote?.managed?.enabled) : isManagedPlugin(id),
       strategy: managedPluginsV2Enabled
@@ -523,4 +532,163 @@ export function mergeCloudState(
     isUninstallingFromInstance: hasLocal && !instanceMap.has(catalogPlugin.id),
     isProvisioned: isProvisioned,
   };
+}
+
+export enum InstallReadinessState {
+  Ready = 'ready',
+  Warning = 'warning',
+  Blocked = 'blocked',
+}
+
+export enum InstallReadinessBlockerReason {
+  IncompatibleVersion = 'incompatible_version',
+  UnsignedSignature = 'unsigned_signature',
+  InvalidSignature = 'invalid_signature',
+  ModifiedSignature = 'modified_signature',
+  MissingPermission = 'missing_permission',
+  EnterpriseUnlicensed = 'enterprise_unlicensed',
+  RemoteUnavailable = 'remote_unavailable',
+  NotPublished = 'not_published',
+  RendererPlugin = 'renderer_plugin',
+  DevPlugin = 'dev_plugin',
+}
+
+export interface InstallReadiness {
+  state: InstallReadinessState;
+  blockerReason?: InstallReadinessBlockerReason;
+  compatibleVersion?: string;
+  grafanaDependency?: string;
+  signatureStatus: PluginSignatureStatus;
+  signatureLabel: string;
+}
+
+interface GetInstallReadinessOptions {
+  latestCompatibleVersion?: Version;
+  isRemotePluginsAvailable: boolean;
+  hasInstallPermission: boolean;
+}
+
+export function getInstallReadiness(
+  plugin: CatalogPlugin,
+  { latestCompatibleVersion, isRemotePluginsAvailable, hasInstallPermission }: GetInstallReadinessOptions
+): InstallReadiness | null {
+  if (plugin.isCore || plugin.angularDetected) {
+    return null;
+  }
+
+  const signatureStatus = plugin.signature;
+  const signatureLabel = getSignatureLabel(signatureStatus);
+  const compatibleVersion = latestCompatibleVersion?.version;
+  const grafanaDependency =
+    latestCompatibleVersion?.grafanaDependency || plugin.details?.grafanaDependency || undefined;
+
+  const base: Omit<InstallReadiness, 'state' | 'blockerReason'> = {
+    compatibleVersion,
+    grafanaDependency,
+    signatureStatus,
+    signatureLabel,
+  };
+
+  if (plugin.type === PluginType.renderer) {
+    return {
+      ...base,
+      state: InstallReadinessState.Blocked,
+      blockerReason: InstallReadinessBlockerReason.RendererPlugin,
+    };
+  }
+
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) {
+    return {
+      ...base,
+      state: InstallReadinessState.Blocked,
+      blockerReason: InstallReadinessBlockerReason.EnterpriseUnlicensed,
+    };
+  }
+
+  if (plugin.isDev) {
+    return {
+      ...base,
+      state: InstallReadinessState.Warning,
+      blockerReason: InstallReadinessBlockerReason.DevPlugin,
+    };
+  }
+
+  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
+  if (!hasInstallPermission && !isExternallyManaged) {
+    return {
+      ...base,
+      state: InstallReadinessState.Blocked,
+      blockerReason: InstallReadinessBlockerReason.MissingPermission,
+    };
+  }
+
+  if (!plugin.isPublished) {
+    return {
+      ...base,
+      state: InstallReadinessState.Blocked,
+      blockerReason: InstallReadinessBlockerReason.NotPublished,
+    };
+  }
+
+  if (!latestCompatibleVersion) {
+    return {
+      ...base,
+      state: InstallReadinessState.Blocked,
+      blockerReason: InstallReadinessBlockerReason.IncompatibleVersion,
+    };
+  }
+
+  if (!isRemotePluginsAvailable) {
+    return {
+      ...base,
+      state: InstallReadinessState.Blocked,
+      blockerReason: InstallReadinessBlockerReason.RemoteUnavailable,
+    };
+  }
+
+  if (signatureStatus === PluginSignatureStatus.invalid) {
+    return {
+      ...base,
+      state: InstallReadinessState.Blocked,
+      blockerReason: InstallReadinessBlockerReason.InvalidSignature,
+    };
+  }
+
+  if (signatureStatus === PluginSignatureStatus.modified) {
+    return {
+      ...base,
+      state: InstallReadinessState.Blocked,
+      blockerReason: InstallReadinessBlockerReason.ModifiedSignature,
+    };
+  }
+
+  if (signatureStatus === PluginSignatureStatus.missing) {
+    return {
+      ...base,
+      state: InstallReadinessState.Warning,
+      blockerReason: InstallReadinessBlockerReason.UnsignedSignature,
+    };
+  }
+
+  return {
+    ...base,
+    state: InstallReadinessState.Ready,
+  };
+}
+
+function getSignatureLabel(signature: PluginSignatureStatus): string {
+  switch (signature) {
+    case PluginSignatureStatus.valid:
+      return 'Signed';
+    case PluginSignatureStatus.missing:
+      return 'Unsigned';
+    case PluginSignatureStatus.invalid:
+      return 'Invalid signature';
+    case PluginSignatureStatus.modified:
+      return 'Modified signature';
+    case PluginSignatureStatus.internal:
+      return 'Core plugin';
+    default:
+      return 'Unknown';
+  }
 }

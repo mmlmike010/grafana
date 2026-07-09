@@ -7,7 +7,9 @@ import { Icon, Stack, useStyles2 } from '@grafana/ui';
 
 import { GetStartedWithPlugin } from '../components/GetStartedWithPlugin/GetStartedWithPlugin';
 import { InstallControlsButton } from '../components/InstallControls/InstallControlsButton';
+import { InstallReadinessIndicator } from '../components/InstallReadinessIndicator';
 import {
+  getInstallReadiness,
   getLatestCompatibleVersion,
   hasInstallControlWarning,
   isDisabledAngularPlugin,
@@ -34,10 +36,13 @@ export const PluginActions = ({ plugin }: Props) => {
   const hasInstallWarning = hasInstallControlWarning(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
   const pluginStatus = getPluginStatus(plugin, latestCompatibleVersion);
   const isInstallControlsDisabled = getInstallControlsDisabled(plugin, latestCompatibleVersion);
+  const installReadiness = getInstallReadiness(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
+  const showInstallReadiness = !plugin.isCore && plugin.isPublished;
 
   return (
     <Stack direction="column">
       <Stack alignItems="center">
+        {showInstallReadiness && <InstallReadinessIndicator plugin={plugin} readiness={installReadiness} />}
         {!isInstallControlsDisabled && (
           <InstallControlsButton
             plugin={plugin}

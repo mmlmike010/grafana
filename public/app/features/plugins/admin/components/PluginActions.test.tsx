@@ -36,6 +36,50 @@ describe('PluginActions', () => {
       expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
     });
 
+    it('should render install readiness indicator next to the install button', () => {
+      render(
+        <PluginActions
+          plugin={createPluginStub({
+            details: {
+              versions: [createVersion()],
+              links: [],
+              grafanaDependency: '>=9.0.0',
+            },
+          })}
+        />,
+        { preloadedState: { plugins } }
+      );
+
+      const readiness = screen.getByTestId('plugin-install-readiness-indicator');
+      const install = screen.getByRole('button', { name: /install/i });
+      expect(readiness).toBeInTheDocument();
+      expect(readiness.compareDocumentPosition(install) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('should render a blocked readiness state for incompatible plugins', () => {
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(undefined);
+      render(
+        <PluginActions
+          plugin={createPluginStub({
+            details: {
+              versions: [createVersion({ isCompatible: false })],
+              links: [],
+            },
+          })}
+        />,
+        { preloadedState: { plugins } }
+      );
+
+      expect(screen.getByText('Blocked')).toBeInTheDocument();
+    });
+
+    it('should not render install readiness for core plugins', () => {
+      const corePlugin = createPluginStub({ isCore: true });
+      render(<PluginActions plugin={corePlugin} />, { preloadedState: { plugins } });
+
+      expect(screen.queryByTestId('plugin-install-readiness-indicator')).not.toBeInTheDocument();
+    });
+
     it('should render uninstall button for installed plugin', () => {
       const installedPlugin = createPluginStub({ isInstalled: true });
       render(<PluginActions plugin={installedPlugin} />, { preloadedState: { plugins } });

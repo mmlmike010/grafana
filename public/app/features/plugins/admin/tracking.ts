@@ -16,3 +16,22 @@ export const trackPluginInstalled = (props: PluginTrackingProps) => {
 export const trackPluginUninstalled = (props: PluginTrackingProps) => {
   reportInteraction('grafana_plugin_uninstall_clicked', props);
 };
+
+type InstallReadinessTrackingProps = PluginTrackingProps & {
+  is_compatible: boolean;
+  is_signed: boolean;
+  has_blockers: boolean;
+  has_warnings: boolean;
+};
+
+type InstallDeflectionTrackingProps = PluginTrackingProps & {
+  reason: string;
+};
+
+export const trackInstallReadinessViewed = (props: InstallReadinessTrackingProps) => {
+  reportInteraction('grafana_plugin_install_readiness_viewed', props);
+};
+
+export const trackInstallDeflection = (props: InstallDeflectionTrackingProps) => {
+  reportInteraction('grafana_plugin_install_deflected', props);
+};

@@ -458,6 +458,23 @@ func (hs *HTTPServer) GetPluginErrorsList(c *contextmodel.ReqContext) response.R
 	return response.JSON(http.StatusOK, hs.pluginErrorResolver.PluginErrors(c.Req.Context()))
 }
 
+func (hs *HTTPServer) GetPluginInstallReadiness(c *contextmodel.ReqContext) response.Response {
+	if !hs.Cfg.PluginAdminEnabled {
+		return response.Error(http.StatusNotFound, "Plugin admin is disabled", nil)
+	}
+
+	//nolint:staticcheck // not yet migrated to OpenFeature
+	if !hs.Features.IsEnabled(c.Req.Context(), featuremgmt.FlagPluginInstallReadiness) {
+		return response.Error(http.StatusNotFound, "Plugin install readiness is disabled", nil)
+	}
+
+	pluginID := web.Params(c.Req)[":pluginId"]
+	version := c.Query("version")
+	readiness := hs.pluginReadiness.GetReadiness(c.Req.Context(), pluginID, version)
+
+	return response.JSON(http.StatusOK, readiness)
+}
+
 func (hs *HTTPServer) InstallPlugin(c *contextmodel.ReqContext) response.Response {
 	dto := dtos.InstallPluginCommand{}
 	if err := web.Bind(c.Req, &dto); err != nil {

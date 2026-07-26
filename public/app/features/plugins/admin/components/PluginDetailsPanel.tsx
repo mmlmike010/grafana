@@ -23,6 +23,7 @@ import { formatDate } from 'app/core/internationalization/dates';
 import { type CatalogPlugin } from '../types';
 
 import { PluginInsights } from './PluginInsights';
+import { InstallReadinessCardContainer } from './InstallReadinessCard/InstallReadinessCardContainer';
 
 type Props = { pluginExtentionsInfo: PageInfoItem[]; plugin: CatalogPlugin; width?: string };
 
@@ -74,6 +75,11 @@ export function PluginDetailsPanel(props: Props): React.ReactElement | null {
         {config.featureToggles.pluginInsights && plugin.insights && plugin.insights?.insights?.length > 0 && (
           <Box borderRadius="lg" padding={2} borderColor="medium" borderStyle="solid">
             <PluginInsights pluginInsights={plugin.insights} />
+          </Box>
+        )}
+        {config.featureToggles.pluginInstallReadiness && !plugin.isCore && (
+          <Box borderRadius="lg" padding={2} borderColor="medium" borderStyle="solid">
+            <InstallReadinessCardContainer plugin={plugin} />
           </Box>
         )}
         <Box borderRadius="lg" padding={2} borderColor="medium" borderStyle="solid">

@@ -51,6 +51,16 @@ func NewManager(cfg ManagerCfg) *Manager {
 	}
 }
 
+// ListPluginVersions returns plugin versions from grafana.com with compatibility markers.
+func (m *Manager) ListPluginVersions(ctx context.Context, pluginID string, compatOpts CompatOpts) ([]Version, error) {
+	return m.grafanaCompatiblePluginVersions(ctx, pluginID, compatOpts)
+}
+
+// Logger returns the repository logger.
+func (m *Manager) Logger() log.PrettyLogger {
+	return m.log
+}
+
 // GetPluginArchive fetches the requested plugin archive
 func (m *Manager) GetPluginArchive(ctx context.Context, pluginID, version string, compatOpts CompatOpts) (*PluginArchive, error) {
 	dlOpts, err := m.GetPluginArchiveInfo(ctx, pluginID, version, compatOpts)

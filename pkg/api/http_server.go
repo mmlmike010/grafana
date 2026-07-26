@@ -84,6 +84,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/managedplugins"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginassets"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginchecker"
+	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginreadiness"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/plugincontext"
 	pluginSettings "github.com/grafana/grafana/pkg/services/pluginsintegration/pluginsettings"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginstore"
@@ -153,6 +154,7 @@ type HTTPServer struct {
 	pluginErrorResolver          plugins.ErrorResolver
 	pluginAssets                 *pluginassets.Service
 	pluginPreinstall             pluginchecker.Preinstall
+	pluginReadiness              *pluginreadiness.Service
 	SearchService                search.Service
 	ShortURLService              shorturls.Service
 	QueryHistoryService          queryhistory.Service
@@ -275,7 +277,7 @@ func ProvideHTTPServer(opts ServerOptions, cfg *setting.Cfg, routeRegister routi
 	annotationRepo annotations.Repository, tagService tag.Service, oauthTokenService oauthtoken.OAuthTokenService,
 	statsService stats.Service, authnService authn.Service, pluginsCDNService *pluginscdn.Service, promGatherer prometheus.Gatherer,
 	starApi *starApi.API, promRegister prometheus.Registerer, clientConfigProvider grafanaapiserver.DirectRestConfigProvider, anonService anonymous.Service,
-	userVerifier user.Verifier, pluginPreinstall pluginchecker.Preinstall, publicDashboardsService publicdashboards.Service,
+	userVerifier user.Verifier, pluginPreinstall pluginchecker.Preinstall, pluginReadiness *pluginreadiness.Service, publicDashboardsService publicdashboards.Service,
 ) (*HTTPServer, error) {
 	web.Env = cfg.Env
 	m := web.New()
@@ -301,6 +303,7 @@ func ProvideHTTPServer(opts ServerOptions, cfg *setting.Cfg, routeRegister routi
 		grafanaUpdateChecker:         grafanaUpdateChecker,
 		pluginsUpdateChecker:         pluginsUpdateChecker,
 		pluginPreinstall:             pluginPreinstall,
+		pluginReadiness:              pluginReadiness,
 		SettingsProvider:             settingsProvider,
 		DataSourceCache:              dataSourceCache,
 		AuthTokenService:             userTokenService,

@@ -1442,6 +1442,11 @@ export interface FeatureToggles {
   */
   pluginInsights?: boolean;
   /**
+  * Show install readiness summary on plugin detail pages
+  * @default false
+  */
+  pluginInstallReadiness?: boolean;
+  /**
   * Enables a new panel time settings drawer
   * @default false
   */

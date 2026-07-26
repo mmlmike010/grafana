@@ -2281,6 +2281,14 @@ var (
 			Expression:   "false",
 		},
 		{
+			Name:         "pluginInstallReadiness",
+			Description:  "Show install readiness summary on plugin detail pages",
+			Stage:        FeatureStageExperimental,
+			FrontendOnly: false,
+			Owner:        grafanaPluginsPlatformSquad,
+			Expression:   "false",
+		},
+		{
 			Name:            "panelTimeSettings",
 			Description:     "Enables a new panel time settings drawer",
 			FrontendOnly:    false,

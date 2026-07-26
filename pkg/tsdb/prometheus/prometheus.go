@@ -2,16 +2,23 @@ package prometheus
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/grafana/grafana-azure-sdk-go/v2/azsettings"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	sdkhttpclient "github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	sdkapi "github.com/grafana/grafana-plugin-sdk-go/experimental/apis/datasource/v0alpha1"
 
 	"github.com/grafana/grafana-prometheus-datasource/pkg/promlib"
+	"github.com/grafana/grafana-prometheus-datasource/pkg/promlib/models"
 	"github.com/grafana/grafana/pkg/tsdb/prometheus/azureauth"
 )
+
+const healthCheckRefID = "__healthcheck__"
 
 type Service struct {
 	lib *promlib.Service
@@ -43,7 +50,25 @@ func (s *Service) GetHeuristics(ctx context.Context, req promlib.HeuristicsReque
 
 func (s *Service) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult,
 	error) {
-	return s.lib.CheckHealth(ctx, req)
+	hc, err := s.checkHealth(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	heuristics, err := s.GetHeuristics(ctx, promlib.HeuristicsRequest{PluginContext: req.PluginContext})
+	if err != nil {
+		backend.NewLoggerWith("logger", "tsdb.prometheus").Warn("Failed to get prometheus heuristics", "err", err.Error())
+		return hc, nil
+	}
+
+	jsonDetails, err := json.Marshal(heuristics)
+	if err != nil {
+		backend.NewLoggerWith("logger", "tsdb.prometheus").Warn("Failed to marshal heuristics", "err", err)
+		return hc, nil
+	}
+	hc.JSONDetails = jsonDetails
+
+	return hc, nil
 }
 
 func (s *Service) ValidateAdmission(ctx context.Context, req *backend.AdmissionRequest) (*backend.ValidationResponse, error) {
@@ -55,6 +80,59 @@ func (s *Service) MutateAdmission(ctx context.Context, req *backend.AdmissionReq
 }
 func (s *Service) ConvertObjects(ctx context.Context, req *backend.ConversionRequest) (*backend.ConversionResponse, error) {
 	return s.lib.ConvertObjects(ctx, req)
+}
+
+func (s *Service) checkHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+	qm := models.QueryModel{
+		UtcOffsetSec: 0,
+		CommonQueryProperties: sdkapi.CommonQueryProperties{
+			RefID: healthCheckRefID,
+		},
+		PrometheusQueryProperties: models.PrometheusQueryProperties{
+			Expr:    "1+1",
+			Instant: true,
+		},
+	}
+	b, _ := json.Marshal(&qm)
+
+	now := time.Now().UTC()
+	query := backend.DataQuery{
+		RefID: healthCheckRefID,
+		TimeRange: backend.TimeRange{
+			From: now.Add(-3 * time.Second),
+			To:   now,
+		},
+		JSON: b,
+	}
+
+	resp, err := s.QueryData(ctx, &backend.QueryDataRequest{
+		PluginContext: req.PluginContext,
+		Queries:       []backend.DataQuery{query},
+	})
+	if err != nil {
+		return getHealthCheckMessage("There was an error returned querying the Prometheus API.", err)
+	}
+
+	if resp.Responses[healthCheckRefID].Error != nil {
+		return getHealthCheckMessage("There was an error returned querying the Prometheus API.",
+			errors.New(resp.Responses[healthCheckRefID].Error.Error()))
+	}
+
+	return getHealthCheckMessage("Successfully queried the Prometheus API.", nil)
+}
+
+func getHealthCheckMessage(message string, err error) (*backend.CheckHealthResult, error) {
+	if err == nil {
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusOk,
+			Message: message,
+		}, nil
+	}
+
+	return &backend.CheckHealthResult{
+		Status:  backend.HealthStatusError,
+		Message: fmt.Sprintf("%s - %s", err.Error(), message),
+	}, nil
 }
 
 func extendClientOpts(ctx context.Context, settings backend.DataSourceInstanceSettings, clientOpts *sdkhttpclient.Options, plog log.Logger) error {

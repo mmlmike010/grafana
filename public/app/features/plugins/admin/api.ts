@@ -11,6 +11,7 @@ import {
   type RemotePlugin,
   type CatalogPluginDetails,
   type CatalogPluginInsights,
+  type PluginInstallReadiness,
   type Version,
   type PluginVersion,
   type InstancePlugin,
@@ -77,6 +78,14 @@ export async function getPluginInsights(id: string, version: string | undefined)
     }
     throw error;
   }
+}
+
+export async function getPluginInstallReadiness(
+  id: string,
+  version?: string
+): Promise<PluginInstallReadiness> {
+  const query = version ? `?version=${encodeURIComponent(version)}` : '';
+  return getBackendSrv().get(`${API_ROOT}/${id}/readiness${query}`);
 }
 
 export async function getRemotePlugins(): Promise<RemotePlugin[]> {

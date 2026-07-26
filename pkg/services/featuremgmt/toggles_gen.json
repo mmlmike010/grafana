@@ -4150,6 +4150,19 @@
     },
     {
       "metadata": {
+        "name": "pluginInstallReadiness",
+        "resourceVersion": "1785091274367",
+        "creationTimestamp": "2026-07-26T18:41:14Z"
+      },
+      "spec": {
+        "description": "Show install readiness summary on plugin detail pages",
+        "stage": "experimental",
+        "codeowner": "@grafana/plugins-platform-backend",
+        "expression": "false"
+      }
+    },
+    {
+      "metadata": {
         "name": "pluginProxyPreserveTrailingSlash",
         "resourceVersion": "1771434338561",
         "creationTimestamp": "2024-06-05T11:36:14Z"

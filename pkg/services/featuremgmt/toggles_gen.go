@@ -754,6 +754,10 @@ const (
 	// Exclude redundant individual dashboard/folder permissions from managed roles at query time
 	FlagExcludeRedundantManagedPermissions = "excludeRedundantManagedPermissions"
 
+	// FlagPluginInstallReadiness
+	// Show install readiness summary on plugin detail pages
+	FlagPluginInstallReadiness = "pluginInstallReadiness"
+
 	// FlagPanelTimeSettings
 	// Enables a new panel time settings drawer
 	FlagPanelTimeSettings = "panelTimeSettings"

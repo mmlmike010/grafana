@@ -142,6 +142,32 @@ export interface CatalogPluginInsights {
   insights: InsightCategory[];
 }
 
+export interface PluginInstallReadinessIssue {
+  id: string;
+  message: string;
+  severity: 'blocker' | 'warning';
+}
+
+export interface PluginInstallReadiness {
+  pluginId: string;
+  grafanaVersion: string;
+  system: string;
+  requestedVersion?: string;
+  latestCompatibleVersion?: string;
+  grafanaDependency?: string;
+  isCompatible: boolean;
+  signature?: PluginSignatureStatus;
+  signatureType?: PluginSignatureType;
+  signatureOrg?: string;
+  isSigned: boolean;
+  canInstall: boolean;
+  blockers: PluginInstallReadinessIssue[];
+  warnings: PluginInstallReadinessIssue[];
+  changelogPath?: string;
+  maintainerName?: string;
+  maintainerUrl?: string;
+}
+
 export interface CatalogPluginInfo {
   logos: { large: string; small: string };
   keywords: string[];

@@ -52,6 +52,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/plugincontext"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginexternal"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/plugininstaller"
+	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginreadiness"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginsettings"
 	pluginSettings "github.com/grafana/grafana/pkg/services/pluginsintegration/pluginsettings/service"
 	_ "github.com/grafana/grafana/pkg/services/pluginsintegration/pluginslog" // Initialize plugin logger
@@ -139,6 +140,7 @@ var WireSet = wire.NewSet(
 	wire.Bind(new(advisor.AdvisorStats), new(*advisor.Service)),
 	pluginchecker.ProvideService,
 	wire.Bind(new(pluginchecker.PluginUpdateChecker), new(*pluginchecker.Service)),
+	pluginreadiness.ProvideService,
 	pluginsso.ProvideDefaultSettingsProvider,
 	wire.Bind(new(pluginsso.SettingsProvider), new(*pluginsso.DefaultSettingsProvider)),
 )

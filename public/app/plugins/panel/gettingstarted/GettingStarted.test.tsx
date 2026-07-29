@@ -28,8 +28,12 @@ describe.each([
     const props = getPanelProps({});
     render(<GettingStarted {...props} />);
 
+    expect(await screen.findByRole('progressbar', { name: /setup progress/i })).toBeInTheDocument();
+    expect(await screen.findByText(/of 3 complete/i)).toBeInTheDocument();
+
     const headings = (await screen.findAllByRole('heading')).map((heading) => heading.textContent);
     expect(headings).toEqual([
+      'Welcome to Grafana',
       'Basic',
       'Grafana fundamentals',
       'Add your first data source',
@@ -40,6 +44,9 @@ describe.each([
 
     const dashboardStepLink = await screen.findByRole('link', { name: /create your first dashboard/i });
     expect(dashboardStepLink).toHaveTextContent(/complete/i);
+
+    expect(screen.getByTestId('getting-started-next-step')).toBeInTheDocument();
+    expect(screen.getByTestId('getting-started-next-step')).toHaveTextContent(/grafana fundamentals/i);
   });
 
   it('allows navigating between steps', async () => {
@@ -47,11 +54,11 @@ describe.each([
     const { user } = render(<GettingStarted {...props} />);
 
     await user.click(await screen.findByRole('button', { name: /to advanced tutorials/i }));
-    const [firstAdvHeading] = await screen.findAllByRole('heading');
-    expect(firstAdvHeading).toHaveTextContent(/advanced/i);
+    expect(await screen.findByRole('heading', { name: /setup complete!/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /advanced/i })).toBeInTheDocument();
 
     await user.click(await screen.findByRole('button', { name: /to basic tutorials/i }));
-    const [firstBasicHeading] = await screen.findAllByRole('heading');
-    expect(firstBasicHeading).toHaveTextContent(/basic/i);
+    expect(await screen.findByRole('heading', { name: /welcome to grafana/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /basic/i })).toBeInTheDocument();
   });
 });

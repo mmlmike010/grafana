@@ -3,7 +3,7 @@ import { css, cx } from '@emotion/css';
 import { type GrafanaTheme2 } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
-import { TextLink, useStyles2 } from '@grafana/ui';
+import { Icon, TextLink, useStyles2 } from '@grafana/ui';
 
 import { type Card } from '../types';
 
@@ -11,13 +11,14 @@ import { cardContent, cardStyle } from './sharedStyles';
 
 interface Props {
   card: Card;
+  isNext?: boolean;
 }
 
-export const DocsCard = ({ card }: Props) => {
-  const styles = useStyles2(getStyles, card.done);
+export const DocsCard = ({ card, isNext = false }: Props) => {
+  const styles = useStyles2(getStyles, card.done, isNext);
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} data-testid={isNext ? 'getting-started-next-step' : undefined}>
       <div className={cx(cardContent, styles.content)}>
         <a
           href={`${card.href}?utm_source=grafana_gettingstarted`}
@@ -25,7 +26,16 @@ export const DocsCard = ({ card }: Props) => {
           onClick={() => reportInteraction('grafana_getting_started_docs', { title: card.title, link: card.href })}
         >
           <div className={styles.heading}>
-            {card.done ? t('gettingstarted.docs-card.complete', 'complete') : card.heading}
+            {card.done ? (
+              <span className={styles.status}>
+                <Icon name="check" size="sm" />
+                {t('gettingstarted.docs-card.complete', 'complete')}
+              </span>
+            ) : isNext ? (
+              t('gettingstarted.docs-card.up-next', 'Up next')
+            ) : (
+              card.heading
+            )}
           </div>
           <h4 className={styles.title}>{card.title}</h4>
         </a>
@@ -44,10 +54,10 @@ export const DocsCard = ({ card }: Props) => {
   );
 };
 
-const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
+const getStyles = (theme: GrafanaTheme2, complete: boolean, isNext: boolean) => {
   return {
     card: css({
-      ...cardStyle(theme, complete),
+      ...cardStyle(theme, { complete, isNext }),
 
       display: 'flex',
       flexDirection: 'column',
@@ -66,8 +76,14 @@ const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
     }),
     heading: css({
       textTransform: 'uppercase',
-      color: complete ? theme.v1.palette.blue95 : '#FFB357',
+      color: complete ? theme.colors.success.text : isNext ? theme.colors.primary.text : theme.colors.warning.text,
       marginBottom: theme.spacing(2),
+      fontWeight: isNext ? theme.typography.fontWeightMedium : theme.typography.fontWeightRegular,
+    }),
+    status: css({
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: theme.spacing(0.5),
     }),
     title: css({
       marginBottom: theme.spacing(2),

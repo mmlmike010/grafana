@@ -35,6 +35,10 @@ describe.each([
       'Add your first data source',
       'Create your first dashboard',
     ]);
+    expect(await screen.findByText('2 of 3 complete')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: /setup progress/i })).toHaveAttribute('aria-valuenow', '67');
+    expect(screen.getByTestId('getting-started-next-step')).toHaveTextContent(/up next/i);
+
     const dataSourceStepLink = await screen.findByRole('link', { name: /add your first data source/i });
     expect(dataSourceStepLink).toHaveTextContent(/complete/i);
 

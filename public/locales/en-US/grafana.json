@@ -9360,7 +9360,8 @@
   "gettingstarted": {
     "docs-card": {
       "complete": "complete",
-      "learn-how": "Learn how in the docs"
+      "learn-how": "Learn how in the docs",
+      "up-next": "Up next"
     },
     "getting-started": {
       "aria-label-to-advanced-tutorials": "To advanced tutorials",
@@ -9368,8 +9369,13 @@
       "checking-completed-setup-steps": "Checking completed setup steps",
       "remove-this-panel": "Remove this panel"
     },
+    "step": {
+      "progress": "{{complete}} of {{total}} complete",
+      "progress-aria-label": "Setup progress"
+    },
     "tutorial-card": {
-      "complete": "complete"
+      "complete": "complete",
+      "up-next": "Up next"
     }
   },
   "gops": {

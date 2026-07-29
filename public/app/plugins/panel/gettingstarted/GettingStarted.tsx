@@ -141,12 +141,15 @@ const getStyles = stylesFactory(() => {
       flexDirection: 'column',
       height: '100%',
       backgroundSize: 'cover',
-      padding: `${theme.spacing(4)} ${theme.spacing(2)} 0`,
+      padding: `${theme.spacing(3)} ${theme.spacing(2)} ${theme.spacing(2)}`,
+      position: 'relative',
     }),
     content: css({
       label: 'content',
       display: 'flex',
       justifyContent: 'center',
+      flex: 1,
+      minHeight: 0,
 
       [theme.breakpoints.down('xxl')]: {
         marginLeft: theme.spacing(3),

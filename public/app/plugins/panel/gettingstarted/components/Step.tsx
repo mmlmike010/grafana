@@ -20,7 +20,6 @@ export const Step = ({ step }: Props) => {
     <div className={styles.setup}>
       <div className={styles.info}>
         <h3 className={styles.title}>{step.title}</h3>
-        <p className={styles.infoText}>{step.info}</p>
       </div>
       <div className={styles.cards}>
         {step.cards.map((card, index) => {
@@ -53,12 +52,8 @@ const getStyles = (theme: GrafanaTheme2) => {
     }),
     title: css({
       color: theme.colors.primary.text,
-      marginBottom: theme.spacing(1),
-      fontSize: theme.typography.h4.fontSize,
-    }),
-    infoText: css({
-      color: theme.colors.text.secondary,
       marginBottom: 0,
+      fontSize: theme.typography.h4.fontSize,
     }),
     cards: css({
       overflowX: 'auto',

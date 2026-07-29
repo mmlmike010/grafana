@@ -7,17 +7,19 @@ import { TextLink, useStyles2 } from '@grafana/ui';
 
 import { type Card } from '../types';
 
-import { cardContent, cardStyle } from './sharedStyles';
+import { type CardVisualState, cardContent, cardStyle } from './sharedStyles';
 
 interface Props {
   card: Card;
+  isNext?: boolean;
 }
 
-export const DocsCard = ({ card }: Props) => {
-  const styles = useStyles2(getStyles, card.done);
+export const DocsCard = ({ card, isNext = false }: Props) => {
+  const state: CardVisualState = card.done ? 'complete' : isNext ? 'next' : 'pending';
+  const styles = useStyles2(getStyles, state);
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} data-testid={isNext ? 'getting-started-next-step' : undefined}>
       <div className={cx(cardContent, styles.content)}>
         <a
           href={`${card.href}?utm_source=grafana_gettingstarted`}
@@ -25,7 +27,11 @@ export const DocsCard = ({ card }: Props) => {
           onClick={() => reportInteraction('grafana_getting_started_docs', { title: card.title, link: card.href })}
         >
           <div className={styles.heading}>
-            {card.done ? t('gettingstarted.docs-card.complete', 'complete') : card.heading}
+            {card.done
+              ? t('gettingstarted.docs-card.complete', 'complete')
+              : isNext
+                ? t('gettingstarted.docs-card.next-up', 'next up')
+                : card.heading}
           </div>
           <h4 className={styles.title}>{card.title}</h4>
         </a>
@@ -44,10 +50,10 @@ export const DocsCard = ({ card }: Props) => {
   );
 };
 
-const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
+const getStyles = (theme: GrafanaTheme2, state: CardVisualState) => {
   return {
     card: css({
-      ...cardStyle(theme, complete),
+      ...cardStyle(theme, state),
 
       display: 'flex',
       flexDirection: 'column',
@@ -66,11 +72,18 @@ const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
     }),
     heading: css({
       textTransform: 'uppercase',
-      color: complete ? theme.v1.palette.blue95 : '#FFB357',
+      color:
+        state === 'complete'
+          ? theme.colors.success.text
+          : state === 'next'
+            ? theme.colors.warning.text
+            : theme.colors.text.secondary,
       marginBottom: theme.spacing(2),
+      fontWeight: state === 'next' ? theme.typography.fontWeightBold : theme.typography.fontWeightMedium,
     }),
     title: css({
       marginBottom: theme.spacing(2),
+      color: state === 'complete' ? theme.colors.text.secondary : theme.colors.text.primary,
     }),
     url: css({
       display: 'inline-block',

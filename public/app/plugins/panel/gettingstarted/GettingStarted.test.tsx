@@ -31,10 +31,14 @@ describe.each([
     const headings = (await screen.findAllByRole('heading')).map((heading) => heading.textContent);
     expect(headings).toEqual([
       'Basic',
+      'Welcome to Grafana',
       'Grafana fundamentals',
       'Add your first data source',
       'Create your first dashboard',
     ]);
+    expect(await screen.findByTestId('getting-started-progress')).toHaveTextContent(/2 of 3 complete/i);
+    expect(await screen.findByTestId('getting-started-next-step')).toHaveTextContent(/grafana fundamentals/i);
+
     const dataSourceStepLink = await screen.findByRole('link', { name: /add your first data source/i });
     expect(dataSourceStepLink).toHaveTextContent(/complete/i);
 

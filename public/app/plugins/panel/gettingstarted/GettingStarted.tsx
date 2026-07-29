@@ -141,7 +141,8 @@ const getStyles = stylesFactory(() => {
       flexDirection: 'column',
       height: '100%',
       backgroundSize: 'cover',
-      padding: `${theme.spacing(4)} ${theme.spacing(2)} 0`,
+      padding: `${theme.spacing(3)} ${theme.spacing(2)} ${theme.spacing(2)}`,
+      gap: theme.spacing(1),
     }),
     content: css({
       label: 'content',

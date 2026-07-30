@@ -294,6 +294,49 @@ export interface Org {
 
 export type CatalogPluginsState = { loading: boolean; error?: Error; plugins: CatalogPlugin[] };
 
+export enum InstallReadinessStatus {
+  Ready = 'ready',
+  Warning = 'warning',
+  Blocked = 'blocked',
+}
+
+export type InstallReadinessReason =
+  | 'ready'
+  | 'loading'
+  | 'renderer'
+  | 'enterprise'
+  | 'dev'
+  | 'missing_permission'
+  | 'not_published'
+  | 'incompatible'
+  | 'remote_unavailable'
+  | 'core'
+  | 'disabled'
+  | 'provisioned'
+  | 'install_controls_disabled'
+  | 'signature_missing'
+  | 'signature_invalid'
+  | 'signature_modified';
+
+export interface InstallReadinessLinks {
+  repositoryUrl?: string;
+  documentationUrl?: string;
+  catalogUrl?: string;
+  maintainerUrl?: string;
+  hasChangelog: boolean;
+}
+
+export interface InstallReadiness {
+  status: InstallReadinessStatus;
+  reason: InstallReadinessReason;
+  latestCompatibleVersion?: Version;
+  grafanaDependency?: string;
+  signature: PluginSignatureStatus;
+  links: InstallReadinessLinks;
+  isDeflected: boolean;
+  isLoading?: boolean;
+}
+
 export enum PluginStatus {
   INSTALL = 'INSTALL',
   UNINSTALL = 'UNINSTALL',

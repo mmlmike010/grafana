@@ -17,6 +17,7 @@ describe('PluginActions', () => {
     jest.spyOn(helpers, 'isInstallControlsEnabled').mockReturnValue(true);
     jest.spyOn(helpers, 'hasInstallControlWarning').mockReturnValue(false);
     jest.spyOn(hooks, 'useIsRemotePluginsAvailable').mockReturnValue(true);
+    jest.spyOn(hooks, 'useFetchDetailsStatus').mockReturnValue({ isLoading: false, error: undefined });
   });
 
   afterEach(() => {
@@ -33,6 +34,7 @@ describe('PluginActions', () => {
     it('should render install button for non-installed plugin', () => {
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
+      expect(screen.getByTestId('install-readiness-indicator')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
     });
 
@@ -56,6 +58,7 @@ describe('PluginActions', () => {
       const corePlugin = createPluginStub({ isCore: true });
       render(<PluginActions plugin={corePlugin} />, { preloadedState: { plugins } });
 
+      expect(screen.getByTestId('install-readiness-indicator')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /install|uninstall|update/i })).not.toBeInTheDocument();
     });
 

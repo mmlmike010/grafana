@@ -6,8 +6,13 @@ import { getFeatureFlagClient } from '@grafana/runtime/internal';
 import { contextSrv } from 'app/core/services/context_srv';
 import { AccessControlAction } from 'app/types/accessControl';
 
+import { isOpenSourceBuildOrUnlicenced } from 'app/features/admin/EnterpriseAuthFeaturesCard';
+
 import {
   type CatalogPlugin,
+  type InstallReadiness,
+  type InstallReadinessReason,
+  InstallReadinessStatus,
   type InstancePlugin,
   type LocalPlugin,
   PluginUpdateStrategy,
@@ -382,6 +387,197 @@ export const hasInstallControlWarning = (
     !isRemotePluginsAvailable
   );
 };
+
+export type InstallReadinessInput = {
+  plugin: CatalogPlugin;
+  isRemotePluginsAvailable: boolean;
+  latestCompatibleVersion?: Version;
+  isDetailsLoading?: boolean;
+  isInstallControlsDisabled?: boolean;
+};
+
+function getInstallReadinessLinks(plugin: CatalogPlugin): InstallReadiness['links'] {
+  const details = plugin.details;
+
+  return {
+    repositoryUrl: details?.repositoryUrl,
+    documentationUrl: details?.documentationUrl,
+    catalogUrl: plugin.url,
+    maintainerUrl: details?.repositoryUrl || plugin.url,
+    hasChangelog: Boolean(details?.changelog),
+  };
+}
+
+function getInstallReadinessBlockReason(
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion?: Version
+): InstallReadinessReason | undefined {
+  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
+  const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
+  const isCompatible = Boolean(latestCompatibleVersion);
+
+  if (plugin.type === PluginType.renderer) {
+    return 'renderer';
+  }
+
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins') && isOpenSourceBuildOrUnlicenced()) {
+    return 'enterprise';
+  }
+
+  if (plugin.isDev) {
+    return 'dev';
+  }
+
+  if (!hasPermission && !isExternallyManaged) {
+    return 'missing_permission';
+  }
+
+  if (!plugin.isPublished) {
+    return 'not_published';
+  }
+
+  if (!isCompatible) {
+    return 'incompatible';
+  }
+
+  if (!isRemotePluginsAvailable) {
+    return 'remote_unavailable';
+  }
+
+  return undefined;
+}
+
+function getSignatureReadinessReason(plugin: CatalogPlugin): InstallReadinessReason | undefined {
+  if (plugin.signature === PluginSignatureStatus.internal || plugin.signature === PluginSignatureStatus.valid) {
+    return undefined;
+  }
+
+  switch (plugin.signature) {
+    case PluginSignatureStatus.missing:
+      return 'signature_missing';
+    case PluginSignatureStatus.invalid:
+      return 'signature_invalid';
+    case PluginSignatureStatus.modified:
+      return 'signature_modified';
+    default:
+      return undefined;
+  }
+}
+
+export function getInstallReadiness({
+  plugin,
+  isRemotePluginsAvailable,
+  latestCompatibleVersion,
+  isDetailsLoading = false,
+  isInstallControlsDisabled = false,
+}: InstallReadinessInput): InstallReadiness {
+  const links = getInstallReadinessLinks(plugin);
+  const grafanaDependency =
+    latestCompatibleVersion?.grafanaDependency || plugin.details?.grafanaDependency || undefined;
+
+  const needsCompatibilityDetails =
+    plugin.isPublished && isRemotePluginsAvailable && !plugin.isInstalled && !plugin.details?.versions;
+
+  if (isDetailsLoading && needsCompatibilityDetails) {
+    return {
+      status: InstallReadinessStatus.Ready,
+      reason: 'loading',
+      latestCompatibleVersion,
+      grafanaDependency,
+      signature: plugin.signature,
+      links,
+      isDeflected: false,
+      isLoading: true,
+    };
+  }
+
+  const blockReason = getInstallReadinessBlockReason(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
+
+  if (blockReason) {
+    return {
+      status: InstallReadinessStatus.Blocked,
+      reason: blockReason,
+      latestCompatibleVersion,
+      grafanaDependency,
+      signature: plugin.signature,
+      links,
+      isDeflected: true,
+    };
+  }
+
+  if (plugin.isCore) {
+    return {
+      status: InstallReadinessStatus.Blocked,
+      reason: 'core',
+      latestCompatibleVersion,
+      grafanaDependency,
+      signature: plugin.signature,
+      links,
+      isDeflected: true,
+    };
+  }
+
+  if (plugin.isDisabled && !isDisabledAngularPlugin(plugin)) {
+    return {
+      status: InstallReadinessStatus.Blocked,
+      reason: 'disabled',
+      latestCompatibleVersion,
+      grafanaDependency,
+      signature: plugin.signature,
+      links,
+      isDeflected: true,
+    };
+  }
+
+  if (plugin.isProvisioned) {
+    return {
+      status: InstallReadinessStatus.Blocked,
+      reason: 'provisioned',
+      latestCompatibleVersion,
+      grafanaDependency,
+      signature: plugin.signature,
+      links,
+      isDeflected: true,
+    };
+  }
+
+  if (!isInstallControlsEnabled()) {
+    return {
+      status: InstallReadinessStatus.Blocked,
+      reason: 'install_controls_disabled',
+      latestCompatibleVersion,
+      grafanaDependency,
+      signature: plugin.signature,
+      links,
+      isDeflected: true,
+    };
+  }
+
+  const signatureReason = getSignatureReadinessReason(plugin);
+
+  if (signatureReason) {
+    return {
+      status: InstallReadinessStatus.Warning,
+      reason: signatureReason,
+      latestCompatibleVersion,
+      grafanaDependency,
+      signature: plugin.signature,
+      links,
+      isDeflected: isInstallControlsDisabled,
+    };
+  }
+
+  return {
+    status: InstallReadinessStatus.Ready,
+    reason: 'ready',
+    latestCompatibleVersion,
+    grafanaDependency,
+    signature: plugin.signature,
+    links,
+    isDeflected: isInstallControlsDisabled,
+  };
+}
 
 export const isLocalPluginVisibleByConfig = (p: LocalPlugin) => isNotHiddenByConfig(p.id);
 

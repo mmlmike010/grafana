@@ -83,11 +83,7 @@ const getStyles = (theme: GrafanaTheme2, state: CardVisualState) => {
     heading: css({
       textTransform: 'uppercase',
       color:
-        state === 'complete'
-          ? theme.colors.success.text
-          : state === 'next'
-            ? theme.colors.primary.text
-            : '#FFB357',
+        state === 'complete' ? theme.colors.success.text : state === 'next' ? theme.colors.primary.text : '#FFB357',
       fontWeight: theme.typography.fontWeightMedium,
     }),
     completeIcon: css({

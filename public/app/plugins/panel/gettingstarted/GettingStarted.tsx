@@ -122,10 +122,7 @@ export function GettingStarted(props: PanelProps) {
             <Button
               className={cx(styles.backForwardButtons, styles.forward)}
               onClick={onForwardClick}
-              aria-label={t(
-                'gettingstarted.getting-started.aria-label-to-advanced-tutorials',
-                'To advanced tutorials'
-              )}
+              aria-label={t('gettingstarted.getting-started.aria-label-to-advanced-tutorials', 'To advanced tutorials')}
               icon="angle-right"
               variant="secondary"
             />

@@ -11,18 +11,14 @@ export const cardStyle = (theme: GrafanaTheme2, state: CardVisualState) => {
     ? 'linear-gradient(to right, #f05a28 0%, #fbca0a 100%)'
     : 'linear-gradient(to right, #FBCA0A 0%, #F05A28 100%)';
 
-  const borderGradient =
-    state === 'complete' ? completeGradient : state === 'next' ? nextGradient : pendingGradient;
+  const borderGradient = state === 'complete' ? completeGradient : state === 'next' ? nextGradient : pendingGradient;
 
   return {
     backgroundColor:
       state === 'next'
         ? theme.colors.emphasize(theme.colors.background.secondary, 0.08)
         : theme.colors.background.secondary,
-    border:
-      state === 'next'
-        ? `1px solid ${theme.colors.primary.border}`
-        : `1px solid ${theme.colors.border.medium}`,
+    border: state === 'next' ? `1px solid ${theme.colors.primary.border}` : `1px solid ${theme.colors.border.medium}`,
     borderRadius: theme.shape.radius.default,
     position: 'relative' as const,
     maxHeight: '230px',

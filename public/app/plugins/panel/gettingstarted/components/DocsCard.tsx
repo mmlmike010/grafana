@@ -3,29 +3,38 @@ import { css, cx } from '@emotion/css';
 import { type GrafanaTheme2 } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
-import { TextLink, useStyles2 } from '@grafana/ui';
+import { Icon, TextLink, useStyles2 } from '@grafana/ui';
 
 import { type Card } from '../types';
 
-import { cardContent, cardStyle } from './sharedStyles';
+import { type CardVisualState, cardContent, cardStyle } from './sharedStyles';
 
 interface Props {
   card: Card;
+  isNext?: boolean;
 }
 
-export const DocsCard = ({ card }: Props) => {
-  const styles = useStyles2(getStyles, card.done);
+export const DocsCard = ({ card, isNext = false }: Props) => {
+  const state: CardVisualState = card.done ? 'complete' : isNext ? 'next' : 'pending';
+  const styles = useStyles2(getStyles, state);
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} data-testid={isNext ? 'getting-started-next-step' : undefined}>
       <div className={cx(cardContent, styles.content)}>
         <a
           href={`${card.href}?utm_source=grafana_gettingstarted`}
           className={styles.url}
           onClick={() => reportInteraction('grafana_getting_started_docs', { title: card.title, link: card.href })}
         >
-          <div className={styles.heading}>
-            {card.done ? t('gettingstarted.docs-card.complete', 'complete') : card.heading}
+          <div className={styles.headingRow}>
+            <div className={styles.heading}>
+              {card.done
+                ? t('gettingstarted.docs-card.complete', 'complete')
+                : isNext
+                  ? t('gettingstarted.docs-card.up-next', 'Up next')
+                  : card.heading}
+            </div>
+            {card.done && <Icon name="check-circle" className={styles.completeIcon} />}
           </div>
           <h4 className={styles.title}>{card.title}</h4>
         </a>
@@ -44,10 +53,10 @@ export const DocsCard = ({ card }: Props) => {
   );
 };
 
-const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
+const getStyles = (theme: GrafanaTheme2, state: CardVisualState) => {
   return {
     card: css({
-      ...cardStyle(theme, complete),
+      ...cardStyle(theme, state),
 
       display: 'flex',
       flexDirection: 'column',
@@ -64,10 +73,21 @@ const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
         backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.03),
       },
     }),
+    headingRow: css({
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(2),
+    }),
     heading: css({
       textTransform: 'uppercase',
-      color: complete ? theme.v1.palette.blue95 : '#FFB357',
-      marginBottom: theme.spacing(2),
+      color:
+        state === 'complete' ? theme.colors.success.text : state === 'next' ? theme.colors.primary.text : '#FFB357',
+      fontWeight: theme.typography.fontWeightMedium,
+    }),
+    completeIcon: css({
+      color: theme.colors.success.text,
     }),
     title: css({
       marginBottom: theme.spacing(2),

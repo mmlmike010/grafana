@@ -3,7 +3,7 @@ import { css, cx } from '@emotion/css';
 import { type GrafanaTheme2 } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
-import { TextLink, useStyles2 } from '@grafana/ui';
+import { Icon, TextLink, useStyles2 } from '@grafana/ui';
 
 import { type Card } from '../types';
 
@@ -11,21 +11,33 @@ import { cardContent, cardStyle } from './sharedStyles';
 
 interface Props {
   card: Card;
+  isNext?: boolean;
 }
 
-export const DocsCard = ({ card }: Props) => {
-  const styles = useStyles2(getStyles, card.done);
+export const DocsCard = ({ card, isNext = false }: Props) => {
+  const styles = useStyles2(getStyles, card.done, isNext);
 
   return (
-    <div className={styles.card}>
+    <div className={styles.card} data-testid={isNext ? 'getting-started-next-step' : undefined}>
       <div className={cx(cardContent, styles.content)}>
         <a
           href={`${card.href}?utm_source=grafana_gettingstarted`}
           className={styles.url}
           onClick={() => reportInteraction('grafana_getting_started_docs', { title: card.title, link: card.href })}
         >
-          <div className={styles.heading}>
-            {card.done ? t('gettingstarted.docs-card.complete', 'complete') : card.heading}
+          <div className={styles.headingRow}>
+            <div className={styles.heading}>
+              {card.done
+                ? t('gettingstarted.docs-card.complete', 'complete')
+                : isNext
+                  ? t('gettingstarted.docs-card.up-next', 'Up next')
+                  : card.heading}
+            </div>
+            {card.done ? (
+              <Icon name="check-circle" className={styles.doneIcon} aria-hidden />
+            ) : isNext ? (
+              <Icon name="arrow-right" className={styles.nextIcon} aria-hidden />
+            ) : null}
           </div>
           <h4 className={styles.title}>{card.title}</h4>
         </a>
@@ -44,10 +56,10 @@ export const DocsCard = ({ card }: Props) => {
   );
 };
 
-const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
+const getStyles = (theme: GrafanaTheme2, complete: boolean, isNext: boolean) => {
   return {
     card: css({
-      ...cardStyle(theme, complete),
+      ...cardStyle(theme, complete, isNext),
 
       display: 'flex',
       flexDirection: 'column',
@@ -64,13 +76,25 @@ const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
         backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.03),
       },
     }),
+    headingRow: css({
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(2),
+    }),
     heading: css({
       textTransform: 'uppercase',
-      color: complete ? theme.v1.palette.blue95 : '#FFB357',
-      marginBottom: theme.spacing(2),
+      color: complete
+        ? theme.colors.success.text
+        : isNext
+          ? theme.colors.primary.text
+          : theme.colors.warning.text,
+      fontWeight: isNext ? theme.typography.fontWeightMedium : undefined,
     }),
     title: css({
       marginBottom: theme.spacing(2),
+      color: isNext ? theme.colors.text.primary : undefined,
     }),
     url: css({
       display: 'inline-block',
@@ -83,6 +107,12 @@ const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
         padding: theme.spacing(1, 2),
         width: '100%',
       },
+    }),
+    doneIcon: css({
+      color: theme.colors.success.text,
+    }),
+    nextIcon: css({
+      color: theme.colors.primary.text,
     }),
   };
 };

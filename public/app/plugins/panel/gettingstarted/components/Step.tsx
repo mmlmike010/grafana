@@ -1,11 +1,13 @@
 import { css } from '@emotion/css';
 
 import { type GrafanaTheme2 } from '@grafana/data';
-import { useStyles2 } from '@grafana/ui';
+import { Trans } from '@grafana/i18n';
+import { Text, useStyles2 } from '@grafana/ui';
 
 import { type SetupStep } from '../types';
 
 import { DocsCard } from './DocsCard';
+import { ProgressStatus } from './ProgressStatus';
 import { TutorialCard } from './TutorialCard';
 
 interface Props {
@@ -14,21 +16,33 @@ interface Props {
 
 export const Step = ({ step }: Props) => {
   const styles = useStyles2(getStyles);
+  const stepsDone = step.cards.filter((card) => card.done).length;
+  const totalStepsToDo = step.cards.length;
+  const nextIncompleteIndex = step.cards.findIndex((card) => !card.done);
 
   return (
     <div className={styles.setup}>
       <div className={styles.info}>
         <h2 className={styles.title}>{step.title}</h2>
-        <p>{step.info}</p>
+        <p className={styles.infoText}>{step.info}</p>
       </div>
-      <div className={styles.cards}>
-        {step.cards.map((card, index) => {
-          const key = `${card.title}-${index}`;
-          if (card.type === 'tutorial') {
-            return <TutorialCard key={key} card={card} />;
-          }
-          return <DocsCard key={key} card={card} />;
-        })}
+      <div className={styles.checklist}>
+        <div className={styles.checklistHeader}>
+          <Text element="h3" variant="h5">
+            <Trans i18nKey="gettingstarted.step.checklist-heading">Setup checklist</Trans>
+          </Text>
+          <ProgressStatus stepsDone={stepsDone} totalStepsToDo={totalStepsToDo} />
+        </div>
+        <div className={styles.cards}>
+          {step.cards.map((card, index) => {
+            const key = `${card.title}-${index}`;
+            const isNext = index === nextIncompleteIndex;
+            if (card.type === 'tutorial') {
+              return <TutorialCard key={key} card={card} isNext={isNext} />;
+            }
+            return <DocsCard key={key} card={card} isNext={isNext} />;
+          })}
+        </div>
       </div>
     </div>
   );
@@ -39,20 +53,41 @@ const getStyles = (theme: GrafanaTheme2) => {
     setup: css({
       display: 'flex',
       width: '95%',
+      gap: theme.spacing(2),
     }),
     info: css({
       width: '172px',
-      marginRight: '5%',
+      marginRight: '3%',
+      flexShrink: 0,
 
       [theme.breakpoints.down('xxl')]: {
-        marginRight: theme.spacing(4),
+        marginRight: theme.spacing(3),
       },
       [theme.breakpoints.down('sm')]: {
         display: 'none',
       },
     }),
     title: css({
-      color: theme.v1.palette.blue95,
+      color: theme.colors.primary.text,
+      marginBottom: theme.spacing(1),
+    }),
+    infoText: css({
+      color: theme.colors.text.secondary,
+      marginBottom: 0,
+    }),
+    checklist: css({
+      flex: 1,
+      minWidth: 0,
+      padding: theme.spacing(2),
+      backgroundColor: theme.colors.background.primary,
+      border: `1px solid ${theme.colors.border.medium}`,
+      borderRadius: theme.shape.radius.default,
+    }),
+    checklistHeader: css({
+      display: 'flex',
+      flexDirection: 'column',
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(0.5),
     }),
     cards: css({
       overflowX: 'auto',
@@ -60,6 +95,9 @@ const getStyles = (theme: GrafanaTheme2) => {
       width: '100%',
       display: 'flex',
       justifyContent: 'flex-start',
+      gap: theme.spacing(0.5),
+      paddingTop: theme.spacing(0.5),
+      paddingBottom: theme.spacing(0.5),
     }),
   };
 };

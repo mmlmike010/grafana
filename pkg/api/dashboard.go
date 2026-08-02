@@ -767,7 +767,7 @@ func (hs *HTTPServer) addGettingStartedPanelToHomeDashboard(c *contextmodel.ReqC
 			"x": 0,
 			"y": 3,
 			"w": 24,
-			"h": 9,
+			"h": 11,
 		},
 	})
 

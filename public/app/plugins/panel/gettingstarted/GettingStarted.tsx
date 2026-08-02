@@ -141,46 +141,19 @@ const getStyles = stylesFactory(() => {
       flexDirection: 'column',
       height: '100%',
       backgroundSize: 'cover',
-      padding: `${theme.spacing(4)} ${theme.spacing(2)} 0`,
+      padding: theme.spacing(2, 2, 1.5),
+      backgroundColor: theme.colors.background.canvas,
     }),
     content: css({
       label: 'content',
       display: 'flex',
       justifyContent: 'center',
+      flex: 1,
+      minHeight: 0,
 
       [theme.breakpoints.down('xxl')]: {
         marginLeft: theme.spacing(3),
         justifyContent: 'flex-start',
-      },
-    }),
-    header: css({
-      label: 'header',
-      marginBottom: theme.spacing(3),
-      display: 'flex',
-      flexDirection: 'column',
-
-      [theme.breakpoints.down('lg')]: {
-        flexDirection: 'row',
-      },
-    }),
-    headerLogo: css({
-      height: '58px',
-      paddingRight: theme.spacing(2),
-      display: 'none',
-
-      [theme.breakpoints.up('md')]: {
-        display: 'block',
-      },
-    }),
-    heading: css({
-      label: 'heading',
-      marginRight: theme.spacing(3),
-      marginBottom: theme.spacing(3),
-      flexGrow: 1,
-      display: 'flex',
-
-      [theme.breakpoints.up('md')]: {
-        marginBottom: 0,
       },
     }),
     backForwardButtons: css({

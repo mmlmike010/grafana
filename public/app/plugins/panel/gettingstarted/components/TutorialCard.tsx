@@ -4,7 +4,7 @@ import { type MouseEvent } from 'react';
 import { type GrafanaTheme2, store } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
-import { useStyles2 } from '@grafana/ui';
+import { Badge, Icon, useStyles2 } from '@grafana/ui';
 
 import { type TutorialCardType } from '../types';
 
@@ -12,10 +12,11 @@ import { cardContent, cardStyle } from './sharedStyles';
 
 interface Props {
   card: TutorialCardType;
+  isNext?: boolean;
 }
 
-export const TutorialCard = ({ card }: Props) => {
-  const styles = useStyles2(getStyles, card.done);
+export const TutorialCard = ({ card, isNext = false }: Props) => {
+  const styles = useStyles2(getStyles, card.done, isNext);
 
   return (
     <a
@@ -24,11 +25,22 @@ export const TutorialCard = ({ card }: Props) => {
       rel="noreferrer"
       href={`${card.href}?utm_source=grafana_gettingstarted`}
       onClick={(event: MouseEvent<HTMLAnchorElement>) => handleTutorialClick(event, card)}
+      data-testid={isNext ? 'getting-started-next-step' : undefined}
     >
       <div className={cardContent}>
         <div className={styles.type}>{card.type}</div>
-        <div className={styles.heading}>
-          {card.done ? t('gettingstarted.tutorial-card.complete', 'complete') : card.heading}
+        <div className={styles.headingRow}>
+          <div className={styles.heading}>
+            {card.done ? t('gettingstarted.tutorial-card.complete', 'complete') : card.heading}
+          </div>
+          {card.done && <Icon name="check-circle" size="sm" className={styles.checkIcon} />}
+          {isNext && (
+            <Badge
+              text={t('gettingstarted.tutorial-card.up-next', 'Up next')}
+              color="blue"
+              className={styles.nextBadge}
+            />
+          )}
         </div>
         <h4 className={styles.cardTitle}>{card.title}</h4>
         <div className={styles.info}>{card.info}</div>
@@ -45,10 +57,10 @@ const handleTutorialClick = (event: MouseEvent<HTMLAnchorElement>, card: Tutoria
   reportInteraction('grafana_getting_started_tutorial', { title: card.title });
 };
 
-const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
+const getStyles = (theme: GrafanaTheme2, complete: boolean, isNext: boolean) => {
   return {
     card: css({
-      ...cardStyle(theme, complete),
+      ...cardStyle(theme, complete, isNext),
       width: '460px',
       minWidth: '460px',
 
@@ -68,20 +80,29 @@ const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
       color: theme.colors.primary.text,
       textTransform: 'uppercase',
     }),
+    headingRow: css({
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+      marginBottom: theme.spacing(1),
+      flexWrap: 'wrap',
+    }),
     heading: css({
       textTransform: 'uppercase',
-      color: theme.colors.primary.text,
-      marginBottom: theme.spacing(1),
+      color: isNext ? theme.colors.warning.text : theme.colors.primary.text,
+      marginBottom: 0,
+    }),
+    checkIcon: css({
+      color: theme.colors.success.text,
+    }),
+    nextBadge: css({
+      marginLeft: 'auto',
     }),
     cardTitle: css({
       marginBottom: theme.spacing(2),
     }),
     info: css({
       marginBottom: theme.spacing(2),
-    }),
-    status: css({
-      display: 'flex',
-      justifyContent: 'flex-end',
     }),
   };
 };

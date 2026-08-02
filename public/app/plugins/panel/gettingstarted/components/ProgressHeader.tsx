@@ -72,7 +72,9 @@ function getStyles(theme: GrafanaTheme2) {
       height: '100%',
       borderRadius: theme.shape.radius.pill,
       backgroundColor: theme.colors.success.main,
-      transition: 'width 200ms ease-out',
+      [theme.transitions.handleMotion('no-preference')]: {
+        transition: 'width 200ms ease-out',
+      },
     }),
   };
 }

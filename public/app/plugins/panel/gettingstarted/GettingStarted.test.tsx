@@ -31,6 +31,7 @@ describe.each([
     const headings = (await screen.findAllByRole('heading')).map((heading) => heading.textContent);
     expect(headings).toEqual([
       'Basic',
+      'Setup checklist',
       'Grafana fundamentals',
       'Add your first data source',
       'Create your first dashboard',
@@ -40,6 +41,19 @@ describe.each([
 
     const dashboardStepLink = await screen.findByRole('link', { name: /create your first dashboard/i });
     expect(dashboardStepLink).toHaveTextContent(/complete/i);
+  });
+
+  it('shows progress and highlights the next incomplete step', async () => {
+    const props = getPanelProps({});
+    render(<GettingStarted {...props} />);
+
+    expect(await screen.findByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '3');
+    expect(screen.getByText(/2 of 3 complete/i)).toBeInTheDocument();
+
+    const nextStep = await screen.findByTestId('getting-started-next-step');
+    expect(nextStep).toHaveTextContent(/grafana fundamentals/i);
+    expect(nextStep).toHaveTextContent(/up next/i);
   });
 
   it('allows navigating between steps', async () => {

@@ -9370,7 +9370,7 @@
       "remove-this-panel": "Remove this panel"
     },
     "progress-status": {
-      "steps-complete": "{{stepsDone}} of {{totalStepsToDo}} complete",
+      "steps-complete": "<0>{{stepsDone}}</0> of {{totalStepsToDo}} complete",
       "your-progress": "Your progress"
     },
     "step": {

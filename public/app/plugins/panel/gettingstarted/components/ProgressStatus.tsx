@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
 
 import { type GrafanaTheme2 } from '@grafana/data';
-import { t } from '@grafana/i18n';
+import { Trans, t } from '@grafana/i18n';
 import { Stack, Text, useStyles2 } from '@grafana/ui';
 
 interface Props {
@@ -25,11 +25,16 @@ export function ProgressStatus({ stepsDone, totalStepsToDo }: Props) {
   return (
     <div className={styles.wrapper}>
       <Stack direction="row" gap={1} alignItems="center" justifyContent="space-between">
-        <Text variant="bodySmall" color="secondary" weight="medium">
+        <Text variant="body" color="secondary" weight="medium">
           {t('gettingstarted.progress-status.your-progress', 'Your progress')}
         </Text>
-        <Text variant="bodySmall" weight="medium">
-          {stepsCompleteLabel}
+        <Text variant="body" weight="medium">
+          <Trans i18nKey="gettingstarted.progress-status.steps-complete" values={{ stepsDone, totalStepsToDo }}>
+            <Text color="primary" weight="bold">
+              {'{{stepsDone}}'}
+            </Text>{' '}
+            of {{ totalStepsToDo }} complete
+          </Trans>
         </Text>
       </Stack>
       <div
@@ -52,16 +57,16 @@ function getStyles(theme: GrafanaTheme2) {
       display: 'flex',
       flexDirection: 'column',
       gap: theme.spacing(1),
-      marginBottom: theme.spacing(2.5),
+      marginBottom: theme.spacing(2),
       padding: theme.spacing(1.5, 2),
-      backgroundColor: theme.colors.background.secondary,
+      backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.04),
       border: `1px solid ${theme.colors.border.medium}`,
       borderRadius: theme.shape.radius.default,
     }),
     track: css({
-      height: theme.spacing(1),
+      height: theme.spacing(1.5),
       borderRadius: theme.shape.radius.pill,
-      backgroundColor: theme.colors.border.weak,
+      backgroundColor: theme.colors.border.medium,
       overflow: 'hidden',
     }),
     filler: (percent: number) =>
@@ -70,7 +75,9 @@ function getStyles(theme: GrafanaTheme2) {
         width: `${percent}%`,
         backgroundColor: theme.colors.success.main,
         borderRadius: theme.shape.radius.pill,
-        transition: 'width 200ms ease-out',
+        [theme.transitions.handleMotion('no-preference')]: {
+          transition: 'width 200ms ease-out',
+        },
       }),
   };
 }

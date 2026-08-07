@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { type GrafanaTheme2, PluginSignatureStatus } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -56,11 +56,18 @@ function signatureLabel(signature: PluginSignatureStatus): string {
 
 export function InstallReadinessIndicator({ plugin, readiness }: Props) {
   const styles = useStyles2(getStyles);
+  const reportedDeflectionKey = useRef<string | null>(null);
 
   useEffect(() => {
     if (!readiness.shouldTrackDeflection) {
       return;
     }
+
+    const deflectionKey = `${plugin.id}:${readiness.reason}`;
+    if (reportedDeflectionKey.current === deflectionKey) {
+      return;
+    }
+    reportedDeflectionKey.current = deflectionKey;
 
     trackPluginInstallDeflected({
       plugin_id: plugin.id,

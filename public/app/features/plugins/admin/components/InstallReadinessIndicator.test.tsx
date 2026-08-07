@@ -39,25 +39,57 @@ describe('InstallReadinessIndicator', () => {
   });
 
   it('renders a warning badge and tracks deflection for unsigned plugins', () => {
-    render(
-      <InstallReadinessIndicator
-        plugin={createPlugin({ signature: PluginSignatureStatus.missing })}
-        readiness={createReadiness({
-          status: 'warning',
-          reason: 'missing_signature',
-          label: 'Unsigned',
-          signature: PluginSignatureStatus.missing,
-          shouldTrackDeflection: true,
-        })}
-      />
-    );
+    const plugin = createPlugin({ signature: PluginSignatureStatus.missing });
+    const readiness = createReadiness({
+      status: 'warning',
+      reason: 'missing_signature',
+      label: 'Unsigned',
+      signature: PluginSignatureStatus.missing,
+      shouldTrackDeflection: true,
+    });
+    const { rerender } = render(<InstallReadinessIndicator plugin={plugin} readiness={readiness} />);
+
+    rerender(<InstallReadinessIndicator plugin={plugin} readiness={readiness} />);
 
     expect(screen.getByText('Unsigned')).toBeInTheDocument();
+    expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledTimes(1);
     expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledWith(
       expect.objectContaining({
         plugin_id: 'test-plugin',
         reason: 'missing_signature',
         status: 'warning',
+      })
+    );
+  });
+
+  it('tracks a new deflection when the blocker reason changes', () => {
+    const plugin = createPlugin();
+    const warningReadiness = createReadiness({
+      status: 'warning',
+      reason: 'missing_signature',
+      label: 'Unsigned',
+      shouldTrackDeflection: true,
+    });
+    const { rerender } = render(<InstallReadinessIndicator plugin={plugin} readiness={warningReadiness} />);
+
+    rerender(
+      <InstallReadinessIndicator
+        plugin={plugin}
+        readiness={createReadiness({
+          status: 'blocked',
+          reason: 'incompatible',
+          label: 'Incompatible',
+          shouldTrackDeflection: true,
+        })}
+      />
+    );
+
+    expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledTimes(2);
+    expect(tracking.trackPluginInstallDeflected).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        plugin_id: 'test-plugin',
+        reason: 'incompatible',
+        status: 'blocked',
       })
     );
   });

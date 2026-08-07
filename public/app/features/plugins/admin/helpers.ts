@@ -1,6 +1,7 @@
 import uFuzzy from '@leeoniya/ufuzzy';
 
 import { PluginSignatureStatus, dateTimeParse, type PluginError, PluginType, PluginErrorCode } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { config, featureEnabled } from '@grafana/runtime';
 import { getFeatureFlagClient } from '@grafana/runtime/internal';
 import { contextSrv } from 'app/core/services/context_srv';
@@ -456,40 +457,36 @@ function getSignatureReadinessReason(signature: PluginSignatureStatus): InstallR
 
 function getReadinessLabel(status: InstallReadinessStatus, reason: InstallReadinessReason): string {
   if (status === 'ready') {
-    return 'Ready to install';
+    return t('plugins.install-readiness.ready', 'Ready to install');
   }
 
   switch (reason) {
     case 'incompatible':
-      return 'Incompatible';
+      return t('plugins.install-readiness.incompatible', 'Incompatible');
     case 'renderer':
-      return 'Cannot install';
+      return t('plugins.install-readiness.cannot-install', 'Cannot install');
     case 'enterprise':
-      return 'License required';
+      return t('plugins.install-readiness.license-required', 'License required');
     case 'dev':
-      return 'Dev build';
+      return t('plugins.install-readiness.dev-build', 'Dev build');
     case 'no_permission':
-      return 'No permission';
+      return t('plugins.install-readiness.no-permission', 'No permission');
     case 'not_published':
-      return 'Not published';
+      return t('plugins.install-readiness.not-published', 'Not published');
     case 'remote_unavailable':
-      return 'Install unavailable';
+      return t('plugins.install-readiness.install-unavailable', 'Install unavailable');
     case 'invalid_signature':
-      return 'Invalid signature';
+      return t('plugins.install-readiness.invalid-signature', 'Invalid signature');
     case 'modified_signature':
-      return 'Modified signature';
+      return t('plugins.install-readiness.modified-signature', 'Modified signature');
     case 'missing_signature':
     case 'unsigned':
-      return 'Unsigned';
+      return t('plugins.install-readiness.unsigned', 'Unsigned');
     default:
-      return 'Install risk';
+      return t('plugins.install-readiness.install-risk', 'Install risk');
   }
 }
 
-/**
- * Summarizes compatibility and signature posture for the plugin details header
- * install-readiness indicator (KAN-1).
- */
 export function getInstallReadiness(
   plugin: CatalogPlugin,
   isRemotePluginsAvailable: boolean,

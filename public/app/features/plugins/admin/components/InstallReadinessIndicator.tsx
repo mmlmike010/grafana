@@ -134,11 +134,7 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
             label: readiness.label,
           })}
         >
-          <Badge
-            text={readiness.label}
-            color={getBadgeColor(readiness.status)}
-            icon={getBadgeIcon(readiness.status)}
-          />
+          <Badge text={readiness.label} color={getBadgeColor(readiness.status)} icon={getBadgeIcon(readiness.status)} />
         </button>
       </Toggletip>
     </div>

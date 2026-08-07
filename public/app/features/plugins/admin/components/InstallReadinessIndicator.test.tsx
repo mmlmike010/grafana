@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { render, screen } from 'test/test-utils';
 
 import { PluginSignatureStatus, PluginType } from '@grafana/data';
@@ -23,6 +24,18 @@ describe('InstallReadinessIndicator', () => {
     expect(screen.getByTestId('plugin-install-readiness')).toBeInTheDocument();
     expect(screen.getByText('Ready to install')).toBeInTheDocument();
     expect(tracking.trackPluginInstallDeflected).not.toHaveBeenCalled();
+  });
+
+  it('opens compatibility details with changelog and maintainer links', async () => {
+    const user = userEvent.setup();
+    render(<InstallReadinessIndicator plugin={createPlugin()} readiness={createReadiness()} />);
+
+    await user.click(screen.getByLabelText('Install readiness: Ready to install'));
+
+    expect(screen.getByText('Compatible version: 1.0.0')).toBeInTheDocument();
+    expect(screen.getByText('Grafana dependency: >=10.0.0')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Changelog' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://example.com');
   });
 
   it('renders a warning badge and tracks deflection for unsigned plugins', () => {

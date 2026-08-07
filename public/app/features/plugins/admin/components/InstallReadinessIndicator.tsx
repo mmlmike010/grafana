@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { type GrafanaTheme2, PluginSignatureStatus } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { locationService } from '@grafana/runtime';
-import { Badge, type BadgeColor, Stack, Text, TextLink, useStyles2 } from '@grafana/ui';
+import { Badge, type BadgeColor, Stack, Text, TextLink, Toggletip, useStyles2 } from '@grafana/ui';
 
 import { type InstallReadiness } from '../helpers';
 import { trackPluginInstallDeflected } from '../tracking';
@@ -126,15 +126,21 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
 
   return (
     <div className={styles.container} data-testid="plugin-install-readiness">
-      <Badge
-        text={readiness.label}
-        color={getBadgeColor(readiness.status)}
-        icon={getBadgeIcon(readiness.status)}
-        tooltip={tooltip}
-        aria-label={t('plugins.install-readiness.aria-label', 'Install readiness: {{label}}', {
-          label: readiness.label,
-        })}
-      />
+      <Toggletip content={tooltip} fitContent placement="bottom-end">
+        <button
+          type="button"
+          className={styles.trigger}
+          aria-label={t('plugins.install-readiness.aria-label', 'Install readiness: {{label}}', {
+            label: readiness.label,
+          })}
+        >
+          <Badge
+            text={readiness.label}
+            color={getBadgeColor(readiness.status)}
+            icon={getBadgeIcon(readiness.status)}
+          />
+        </button>
+      </Toggletip>
     </div>
   );
 }
@@ -143,6 +149,12 @@ const getStyles = (theme: GrafanaTheme2) => ({
   container: css({
     display: 'inline-flex',
     alignItems: 'center',
+  }),
+  trigger: css({
+    padding: 0,
+    border: 0,
+    background: 'transparent',
+    cursor: 'pointer',
   }),
   link: css({
     fontSize: theme.typography.bodySmall.fontSize,

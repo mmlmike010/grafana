@@ -1155,5 +1155,36 @@ describe('Plugins/Helpers', () => {
         shouldTrackDeflection: true,
       });
     });
+
+    it('labels installed compatible plugins as compatible without tracking deflection', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.valid,
+        isPublished: true,
+        isInstalled: true,
+      });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'ready',
+        reason: 'ready',
+        label: 'Compatible',
+        shouldTrackDeflection: false,
+      });
+    });
+
+    it('does not track install deflection for already installed unsigned plugins', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.missing,
+        isPublished: true,
+        isInstalled: true,
+        orgUrl: 'https://example.com',
+      });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'warning',
+        reason: 'missing_signature',
+        label: 'Unsigned',
+        shouldTrackDeflection: false,
+      });
+    });
   });
 });

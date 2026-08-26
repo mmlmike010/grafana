@@ -83,7 +83,8 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
   const changelogHref = readiness.hasChangelog
     ? `${locationService.getLocation().pathname}?page=${PluginTabIds.CHANGELOG}`
     : undefined;
-  const maintainerHref = readiness.orgUrl || readiness.repositoryUrl;
+  const sourceHref = readiness.repositoryUrl;
+  const maintainerHref = readiness.orgUrl && readiness.orgUrl !== sourceHref ? readiness.orgUrl : undefined;
 
   const tooltip = (
     <Stack direction="column" gap={0.5}>
@@ -114,16 +115,21 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
           {t('plugins.install-readiness.maintainer', 'Maintainer: {{name}}', { name: readiness.orgName })}
         </Text>
       )}
-      {(changelogHref || maintainerHref) && (
+      {(changelogHref || sourceHref || maintainerHref) && (
         <Stack direction="row" gap={1} wrap="wrap">
           {changelogHref && (
             <TextLink href={changelogHref} inline={false} className={styles.link}>
               {t('plugins.install-readiness.changelog', 'Changelog')}
             </TextLink>
           )}
+          {sourceHref && (
+            <TextLink href={sourceHref} external inline={false} className={styles.link}>
+              {t('plugins.install-readiness.source', 'Source')}
+            </TextLink>
+          )}
           {maintainerHref && (
             <TextLink href={maintainerHref} external inline={false} className={styles.link}>
-              {t('plugins.install-readiness.source', 'Source')}
+              {t('plugins.install-readiness.maintainer-link', 'Maintainer')}
             </TextLink>
           )}
         </Stack>

@@ -455,9 +455,15 @@ function getSignatureReadinessReason(signature: PluginSignatureStatus): InstallR
   }
 }
 
-function getReadinessLabel(status: InstallReadinessStatus, reason: InstallReadinessReason): string {
+function getReadinessLabel(
+  status: InstallReadinessStatus,
+  reason: InstallReadinessReason,
+  isInstalled: boolean
+): string {
   if (status === 'ready') {
-    return t('plugins.install-readiness.ready', 'Ready to install');
+    return isInstalled
+      ? t('plugins.install-readiness.compatible', 'Compatible')
+      : t('plugins.install-readiness.ready', 'Ready to install');
   }
 
   switch (reason) {
@@ -500,7 +506,7 @@ export function getInstallReadiness(
   return {
     status,
     reason,
-    label: getReadinessLabel(status, reason),
+    label: getReadinessLabel(status, reason, plugin.isInstalled),
     latestCompatibleVersion,
     grafanaDependency: latestCompatibleVersion?.grafanaDependency ?? plugin.details?.grafanaDependency,
     signature: plugin.signature,
@@ -508,7 +514,7 @@ export function getInstallReadiness(
     orgUrl: plugin.orgUrl,
     repositoryUrl: plugin.details?.repositoryUrl || plugin.url,
     hasChangelog: Boolean(plugin.details?.changelog),
-    shouldTrackDeflection: status === 'blocked' || status === 'warning',
+    shouldTrackDeflection: !plugin.isInstalled && (status === 'blocked' || status === 'warning'),
   };
 }
 

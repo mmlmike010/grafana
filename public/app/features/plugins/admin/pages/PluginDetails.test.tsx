@@ -243,11 +243,13 @@ describe('Plugin details page', () => {
     });
 
     it('should display an uninstall button for an already installed plugin', async () => {
-      const { queryByRole } = renderPluginDetails({ id, isInstalled: true });
+      const { queryByRole, queryByText } = renderPluginDetails({ id, isInstalled: true });
 
       expect(await queryByRole('button', { name: /uninstall/i })).toBeInTheDocument();
       // Does not display "install" button
       expect(queryByRole('button', { name: /^install/i })).not.toBeInTheDocument();
+      expect(queryByText('Compatible')).toBeInTheDocument();
+      expect(queryByText('Ready to install')).not.toBeInTheDocument();
     });
 
     it('should display update and uninstall buttons for a plugin with update', async () => {

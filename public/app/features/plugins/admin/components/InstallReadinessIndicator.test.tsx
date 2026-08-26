@@ -35,7 +35,32 @@ describe('InstallReadinessIndicator', () => {
     expect(screen.getByText('Compatible version: 1.0.0')).toBeInTheDocument();
     expect(screen.getByText('Grafana dependency: >=10.0.0')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Changelog' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://example.com');
+    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute(
+      'href',
+      'https://github.com/example/plugin'
+    );
+    expect(screen.getByRole('link', { name: 'Maintainer' })).toHaveAttribute('href', 'https://example.com');
+  });
+
+  it('does not use the maintainer site as the Source link', async () => {
+    const user = userEvent.setup();
+    render(
+      <InstallReadinessIndicator
+        plugin={createPlugin()}
+        readiness={createReadiness({
+          orgUrl: 'https://maintainer.example',
+          repositoryUrl: 'https://github.com/example/plugin',
+        })}
+      />
+    );
+
+    await user.click(screen.getByLabelText('View plugin readiness'));
+
+    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute(
+      'href',
+      'https://github.com/example/plugin'
+    );
+    expect(screen.getByRole('link', { name: 'Maintainer' })).toHaveAttribute('href', 'https://maintainer.example');
   });
 
   it('renders a warning badge and tracks deflection for unsigned plugins', () => {

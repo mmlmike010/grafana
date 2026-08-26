@@ -82,10 +82,20 @@ describe('PluginActions', () => {
     });
 
     it('should render uninstall button for installed plugin', () => {
+      jest.spyOn(helpers, 'getInstallReadiness').mockReturnValue({
+        status: 'ready',
+        reason: 'ready',
+        label: 'Compatible',
+        signature: PluginSignatureStatus.valid,
+        shouldTrackDeflection: false,
+        hasChangelog: false,
+      });
       const installedPlugin = createPluginStub({ isInstalled: true });
       render(<PluginActions plugin={installedPlugin} />, { preloadedState: { plugins } });
 
       expect(screen.getByRole('button', { name: /uninstall/i })).toBeInTheDocument();
+      expect(screen.getByText('Compatible')).toBeInTheDocument();
+      expect(screen.queryByText('Ready to install')).not.toBeInTheDocument();
     });
 
     it('should render update button for plugin with update', () => {

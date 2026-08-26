@@ -523,7 +523,9 @@ export function getInstallReadiness(
     reason,
     label: getReadinessLabel(status, reason, plugin.isInstalled),
     latestCompatibleVersion,
-    grafanaDependency: latestCompatibleVersion?.grafanaDependency ?? plugin.details?.grafanaDependency,
+    grafanaDependency: latestCompatibleVersion
+      ? latestCompatibleVersion.grafanaDependency
+      : plugin.details?.grafanaDependency,
     signature: plugin.signature,
     orgName: plugin.orgName,
     orgUrl: plugin.orgUrl,

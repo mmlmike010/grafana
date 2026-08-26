@@ -1115,6 +1115,25 @@ describe('Plugins/Helpers', () => {
       });
     });
 
+    it('uses the compatible version Grafana dependency even when it is null', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.valid,
+        isPublished: true,
+        details: { links: [], grafanaDependency: '>=11.0.0' },
+      });
+      const compatibleVersionWithoutConstraint: Version = {
+        version: '1.2.0',
+        createdAt: '',
+        isCompatible: true,
+        grafanaDependency: null,
+      };
+
+      expect(getInstallReadiness(plugin, true, compatibleVersionWithoutConstraint)).toMatchObject({
+        status: 'ready',
+        grafanaDependency: null,
+      });
+    });
+
     it('returns blocked when there is no compatible version', () => {
       const plugin = getCatalogPluginMock({ signature: PluginSignatureStatus.valid, isPublished: true });
 

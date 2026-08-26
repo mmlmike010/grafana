@@ -78,7 +78,14 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
       creator_team: 'grafana_plugins_catalog',
       schema_version: '1.0.0',
     });
-  }, [plugin.id, plugin.type, readiness.reason, readiness.shouldTrackDeflection, readiness.status, readiness.isPending]);
+  }, [
+    plugin.id,
+    plugin.type,
+    readiness.reason,
+    readiness.shouldTrackDeflection,
+    readiness.status,
+    readiness.isPending,
+  ]);
 
   if (readiness.isPending) {
     return null;

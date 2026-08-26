@@ -1222,7 +1222,7 @@ describe('Plugins/Helpers', () => {
       });
     });
 
-    it('still warns about unsigned plugins while version details are loading', () => {
+    it('does not track unsigned plugins until version details are loaded', () => {
       const plugin = getCatalogPluginMock({
         signature: PluginSignatureStatus.missing,
         isPublished: true,
@@ -1233,7 +1233,7 @@ describe('Plugins/Helpers', () => {
         status: 'warning',
         reason: 'missing_signature',
         isPending: false,
-        shouldTrackDeflection: true,
+        shouldTrackDeflection: false,
       });
     });
   });

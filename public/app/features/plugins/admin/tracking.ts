@@ -26,6 +26,17 @@ type PluginInstallDeflectedProps = PluginTrackingProps & {
   schema_version?: string;
 };
 
+const reportedInstallDeflections = new Set<string>();
+
 export const trackPluginInstallDeflected = (props: PluginInstallDeflectedProps) => {
+  const deflectionKey = `${props.plugin_id}:${props.reason}`;
+  if (reportedInstallDeflections.has(deflectionKey)) {
+    return;
+  }
+  reportedInstallDeflections.add(deflectionKey);
   reportInteraction('grafana_plugin_install_deflected', props);
+};
+
+export const resetPluginInstallDeflectionTracking = () => {
+  reportedInstallDeflections.clear();
 };

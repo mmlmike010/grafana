@@ -531,7 +531,11 @@ export function getInstallReadiness(
     orgUrl: plugin.orgUrl,
     repositoryUrl: plugin.details?.repositoryUrl || plugin.url,
     hasChangelog: Boolean(plugin.details?.changelog),
-    shouldTrackDeflection: !plugin.isInstalled && !isPending && (status === 'blocked' || status === 'warning'),
+    shouldTrackDeflection:
+      !plugin.isInstalled &&
+      !isPending &&
+      !compatibilityUnknown &&
+      (status === 'blocked' || status === 'warning'),
     isPending,
   };
 }

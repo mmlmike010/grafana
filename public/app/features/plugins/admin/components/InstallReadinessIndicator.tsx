@@ -59,7 +59,7 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
   const reportedDeflectionKey = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!readiness.shouldTrackDeflection) {
+    if (readiness.isPending || !readiness.shouldTrackDeflection) {
       return;
     }
 
@@ -78,7 +78,11 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
       creator_team: 'grafana_plugins_catalog',
       schema_version: '1.0.0',
     });
-  }, [plugin.id, plugin.type, readiness.reason, readiness.shouldTrackDeflection, readiness.status]);
+  }, [plugin.id, plugin.type, readiness.reason, readiness.shouldTrackDeflection, readiness.status, readiness.isPending]);
+
+  if (readiness.isPending) {
+    return null;
+  }
 
   const changelogHref = readiness.hasChangelog
     ? `${locationService.getLocation().pathname}?page=${PluginTabIds.CHANGELOG}`

@@ -134,6 +134,64 @@ describe('InstallReadinessIndicator', () => {
       })
     );
   });
+
+  it('does not render or track while version details are still loading', () => {
+    render(
+      <InstallReadinessIndicator
+        plugin={createPlugin()}
+        readiness={createReadiness({
+          isPending: true,
+          reason: 'compatibility_unknown',
+          label: 'Checking compatibility',
+          latestCompatibleVersion: undefined,
+          grafanaDependency: undefined,
+          shouldTrackDeflection: false,
+        })}
+      />
+    );
+
+    expect(screen.queryByTestId('plugin-install-readiness')).not.toBeInTheDocument();
+    expect(tracking.trackPluginInstallDeflected).not.toHaveBeenCalled();
+  });
+
+  it('tracks incompatible only after version details resolve as blocked', () => {
+    const plugin = createPlugin();
+    const { rerender } = render(
+      <InstallReadinessIndicator
+        plugin={plugin}
+        readiness={createReadiness({
+          isPending: true,
+          reason: 'compatibility_unknown',
+          label: 'Checking compatibility',
+          latestCompatibleVersion: undefined,
+          shouldTrackDeflection: false,
+        })}
+      />
+    );
+
+    rerender(
+      <InstallReadinessIndicator
+        plugin={plugin}
+        readiness={createReadiness({
+          status: 'blocked',
+          reason: 'incompatible',
+          label: 'Incompatible',
+          latestCompatibleVersion: undefined,
+          shouldTrackDeflection: true,
+          isPending: false,
+        })}
+      />
+    );
+
+    expect(screen.getByText('Incompatible')).toBeInTheDocument();
+    expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledTimes(1);
+    expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reason: 'incompatible',
+        status: 'blocked',
+      })
+    );
+  });
 });
 
 function createPlugin(overrides?: Partial<CatalogPlugin>): CatalogPlugin {
@@ -182,6 +240,7 @@ function createReadiness(overrides?: Partial<InstallReadiness>): InstallReadines
     repositoryUrl: 'https://github.com/example/plugin',
     hasChangelog: true,
     shouldTrackDeflection: false,
+    isPending: false,
     ...overrides,
   };
 }

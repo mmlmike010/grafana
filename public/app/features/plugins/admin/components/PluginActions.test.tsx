@@ -23,6 +23,7 @@ describe('PluginActions', () => {
       signature: PluginSignatureStatus.valid,
       shouldTrackDeflection: false,
       hasChangelog: false,
+      isPending: false,
     });
     jest.spyOn(hooks, 'useIsRemotePluginsAvailable').mockReturnValue(true);
   });
@@ -55,6 +56,7 @@ describe('PluginActions', () => {
         grafanaDependency: '>=10.0.0',
         shouldTrackDeflection: false,
         hasChangelog: false,
+        isPending: false,
       });
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
@@ -73,6 +75,7 @@ describe('PluginActions', () => {
         signature: PluginSignatureStatus.valid,
         shouldTrackDeflection: true,
         hasChangelog: false,
+        isPending: false,
       });
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
@@ -89,6 +92,7 @@ describe('PluginActions', () => {
         signature: PluginSignatureStatus.valid,
         shouldTrackDeflection: false,
         hasChangelog: false,
+        isPending: false,
       });
       const installedPlugin = createPluginStub({ isInstalled: true });
       render(<PluginActions plugin={installedPlugin} />, { preloadedState: { plugins } });

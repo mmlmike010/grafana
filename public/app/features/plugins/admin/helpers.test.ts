@@ -1184,6 +1184,37 @@ describe('Plugins/Helpers', () => {
         reason: 'missing_signature',
         label: 'Unsigned',
         shouldTrackDeflection: false,
+        isPending: false,
+      });
+    });
+
+    it('does not treat missing version details as an incompatible deflection', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.valid,
+        isPublished: true,
+        details: undefined,
+      });
+
+      expect(getInstallReadiness(plugin, true, undefined)).toMatchObject({
+        reason: 'compatibility_unknown',
+        label: 'Checking compatibility',
+        isPending: true,
+        shouldTrackDeflection: false,
+      });
+    });
+
+    it('still warns about unsigned plugins while version details are loading', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.missing,
+        isPublished: true,
+        details: undefined,
+      });
+
+      expect(getInstallReadiness(plugin, true, undefined)).toMatchObject({
+        status: 'warning',
+        reason: 'missing_signature',
+        isPending: false,
+        shouldTrackDeflection: true,
       });
     });
   });

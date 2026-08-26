@@ -385,6 +385,7 @@ export type InstallReadinessReason =
   | 'no_permission'
   | 'not_published'
   | 'incompatible'
+  | 'compatibility_unknown'
   | 'remote_unavailable'
   | 'unsigned'
   | 'invalid_signature'
@@ -403,6 +404,7 @@ export type InstallReadiness = {
   repositoryUrl?: string;
   hasChangelog: boolean;
   shouldTrackDeflection: boolean;
+  isPending: boolean;
 };
 
 function getInstallBlockerReason(
@@ -460,6 +462,10 @@ function getReadinessLabel(
   reason: InstallReadinessReason,
   isInstalled: boolean
 ): string {
+  if (reason === 'compatibility_unknown') {
+    return t('plugins.install-readiness.checking', 'Checking compatibility');
+  }
+
   if (status === 'ready') {
     return isInstalled
       ? t('plugins.install-readiness.compatible', 'Compatible')
@@ -498,9 +504,18 @@ export function getInstallReadiness(
   isRemotePluginsAvailable: boolean,
   latestCompatibleVersion?: Version
 ): InstallReadiness {
-  const blockerReason = getInstallBlockerReason(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
+  const versionsLoaded = Array.isArray(plugin.details?.versions);
+  const compatibilityUnknown = !versionsLoaded && !latestCompatibleVersion;
+  let blockerReason = getInstallBlockerReason(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
+
+  // Missing versions is not the same as an incompatible plugin. Details often load after the header renders.
+  if (compatibilityUnknown && blockerReason === 'incompatible') {
+    blockerReason = undefined;
+  }
+
   const signatureReason = getSignatureReadinessReason(plugin.signature);
-  const reason = blockerReason ?? signatureReason ?? 'ready';
+  const isPending = compatibilityUnknown && !blockerReason && !signatureReason;
+  const reason = blockerReason ?? signatureReason ?? (isPending ? 'compatibility_unknown' : 'ready');
   const status: InstallReadinessStatus = blockerReason ? 'blocked' : signatureReason ? 'warning' : 'ready';
 
   return {
@@ -514,7 +529,8 @@ export function getInstallReadiness(
     orgUrl: plugin.orgUrl,
     repositoryUrl: plugin.details?.repositoryUrl || plugin.url,
     hasChangelog: Boolean(plugin.details?.changelog),
-    shouldTrackDeflection: !plugin.isInstalled && (status === 'blocked' || status === 'warning'),
+    shouldTrackDeflection: !plugin.isInstalled && !isPending && (status === 'blocked' || status === 'warning'),
+    isPending,
   };
 }
 

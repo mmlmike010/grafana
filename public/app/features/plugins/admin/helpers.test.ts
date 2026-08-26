@@ -14,6 +14,7 @@ import {
   isRemotePluginVisibleByConfig,
   isNonAngularVersion,
   isDisabledAngularPlugin,
+  getInstallReadiness,
 } from './helpers';
 import { getLocalPluginMock, getRemotePluginMock, getCatalogPluginMock } from './mocks/mockHelpers';
 import {
@@ -231,6 +232,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',
@@ -457,6 +459,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',
@@ -1073,6 +1076,84 @@ describe('Plugins/Helpers', () => {
     it('should return false for plugins that are not disabled', () => {
       const plugin = { isDisabled: false, error: undefined } as CatalogPlugin;
       expect(isDisabledAngularPlugin(plugin)).toBe(false);
+    });
+  });
+
+  describe('getInstallReadiness()', () => {
+    const compatibleVersion: Version = {
+      version: '2.1.0',
+      createdAt: '',
+      isCompatible: true,
+      grafanaDependency: '>=10.0.0',
+    };
+
+    beforeEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { contextSrv } = require('app/core/services/context_srv');
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns ready for a signed compatible plugin', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.valid,
+        isPublished: true,
+        details: { changelog: '## 1.0.0', links: [], repositoryUrl: 'https://example.com/repo' },
+      });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'ready',
+        reason: 'ready',
+        label: 'Ready to install',
+        shouldTrackDeflection: false,
+        grafanaDependency: '>=10.0.0',
+        hasChangelog: true,
+        repositoryUrl: 'https://example.com/repo',
+      });
+    });
+
+    it('returns blocked when there is no compatible version', () => {
+      const plugin = getCatalogPluginMock({ signature: PluginSignatureStatus.valid, isPublished: true });
+
+      expect(getInstallReadiness(plugin, true, undefined)).toMatchObject({
+        status: 'blocked',
+        reason: 'incompatible',
+        label: 'Incompatible',
+        shouldTrackDeflection: true,
+      });
+    });
+
+    it('returns warning for unsigned plugins that are otherwise installable', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.missing,
+        isPublished: true,
+        orgUrl: 'https://example.com',
+      });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'warning',
+        reason: 'missing_signature',
+        label: 'Unsigned',
+        shouldTrackDeflection: true,
+        orgUrl: 'https://example.com',
+      });
+    });
+
+    it('prefers install blockers over signature warnings', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.missing,
+        isPublished: true,
+        type: PluginType.renderer,
+      });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'blocked',
+        reason: 'renderer',
+        shouldTrackDeflection: true,
+      });
     });
   });
 });

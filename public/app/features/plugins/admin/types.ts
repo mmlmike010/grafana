@@ -45,6 +45,7 @@ export interface CatalogPlugin extends WithAccessControlMetadata {
   latestVersion?: string;
   name: string;
   orgName: string;
+  orgUrl?: string;
   signature: PluginSignatureStatus;
   signatureType?: PluginSignatureType;
   signatureOrg?: string;

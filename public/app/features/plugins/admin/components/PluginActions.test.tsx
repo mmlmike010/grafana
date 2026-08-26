@@ -16,6 +16,15 @@ describe('PluginActions', () => {
     plugins = { ...initialState };
     jest.spyOn(helpers, 'isInstallControlsEnabled').mockReturnValue(true);
     jest.spyOn(helpers, 'hasInstallControlWarning').mockReturnValue(false);
+    jest.spyOn(helpers, 'getInstallReadiness').mockReturnValue({
+      status: 'ready',
+      reason: 'ready',
+      label: 'Ready to install',
+      signature: PluginSignatureStatus.valid,
+      shouldTrackDeflection: false,
+      hasChangelog: false,
+      isPending: false,
+    });
     jest.spyOn(hooks, 'useIsRemotePluginsAvailable').mockReturnValue(true);
   });
 
@@ -31,16 +40,66 @@ describe('PluginActions', () => {
     });
 
     it('should render install button for non-installed plugin', () => {
+      const compatibleVersion = {
+        version: '1.0.0',
+        createdAt: '',
+        isCompatible: true,
+        grafanaDependency: '>=10.0.0',
+      };
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(compatibleVersion);
+      jest.spyOn(helpers, 'getInstallReadiness').mockReturnValue({
+        status: 'ready',
+        reason: 'ready',
+        label: 'Ready to install',
+        signature: PluginSignatureStatus.valid,
+        latestCompatibleVersion: compatibleVersion,
+        grafanaDependency: '>=10.0.0',
+        shouldTrackDeflection: false,
+        hasChangelog: false,
+        isPending: false,
+      });
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
-      expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Install' })).toBeInTheDocument();
+      expect(screen.getByTestId('plugin-install-readiness')).toBeInTheDocument();
+      expect(screen.getByText('Ready to install')).toBeInTheDocument();
+    });
+
+    it('should render blocked readiness indicator when install has a warning', () => {
+      jest.spyOn(helpers, 'hasInstallControlWarning').mockReturnValue(true);
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(undefined);
+      jest.spyOn(helpers, 'getInstallReadiness').mockReturnValue({
+        status: 'blocked',
+        reason: 'incompatible',
+        label: 'Incompatible',
+        signature: PluginSignatureStatus.valid,
+        shouldTrackDeflection: true,
+        hasChangelog: false,
+        isPending: false,
+      });
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(screen.getByTestId('plugin-install-readiness')).toBeInTheDocument();
+      expect(screen.getByText('Incompatible')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Install' })).not.toBeInTheDocument();
     });
 
     it('should render uninstall button for installed plugin', () => {
+      jest.spyOn(helpers, 'getInstallReadiness').mockReturnValue({
+        status: 'ready',
+        reason: 'ready',
+        label: 'Compatible',
+        signature: PluginSignatureStatus.valid,
+        shouldTrackDeflection: false,
+        hasChangelog: false,
+        isPending: false,
+      });
       const installedPlugin = createPluginStub({ isInstalled: true });
       render(<PluginActions plugin={installedPlugin} />, { preloadedState: { plugins } });
 
       expect(screen.getByRole('button', { name: /uninstall/i })).toBeInTheDocument();
+      expect(screen.getByText('Compatible')).toBeInTheDocument();
+      expect(screen.queryByText('Ready to install')).not.toBeInTheDocument();
     });
 
     it('should render update button for plugin with update', () => {

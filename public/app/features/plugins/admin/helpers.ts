@@ -1,6 +1,7 @@
 import uFuzzy from '@leeoniya/ufuzzy';
 
 import { PluginSignatureStatus, dateTimeParse, type PluginError, PluginType, PluginErrorCode } from '@grafana/data';
+import { t } from '@grafana/i18n';
 import { config, featureEnabled } from '@grafana/runtime';
 import { getFeatureFlagClient } from '@grafana/runtime/internal';
 import { contextSrv } from 'app/core/services/context_srv';
@@ -128,6 +129,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     },
     name,
     orgName,
+    orgUrl: plugin.orgUrl || undefined,
     popularity,
     publishedAt,
     signature: getPluginSignature({ remote: plugin, error }),
@@ -261,6 +263,7 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     name: remote?.name || local?.name || '',
     // TODO<check if we would like to keep preferring the remote version>
     orgName: remote?.orgName || local?.info.author.name || '',
+    orgUrl: remote?.orgUrl || undefined,
     popularity: remote?.popularity || 0,
     publishedAt: remote?.createdAt || '',
     type,
@@ -369,19 +372,170 @@ export const hasInstallControlWarning = (
   isRemotePluginsAvailable: boolean,
   latestCompatibleVersion?: Version
 ) => {
+  return Boolean(getInstallBlockerReason(plugin, isRemotePluginsAvailable, latestCompatibleVersion));
+};
+
+export type InstallReadinessStatus = 'ready' | 'warning' | 'blocked';
+
+export type InstallReadinessReason =
+  | 'ready'
+  | 'renderer'
+  | 'enterprise'
+  | 'dev'
+  | 'no_permission'
+  | 'not_published'
+  | 'incompatible'
+  | 'compatibility_unknown'
+  | 'remote_unavailable'
+  | 'unsigned'
+  | 'invalid_signature'
+  | 'modified_signature'
+  | 'missing_signature';
+
+export type InstallReadiness = {
+  status: InstallReadinessStatus;
+  reason: InstallReadinessReason;
+  label: string;
+  latestCompatibleVersion?: Version;
+  grafanaDependency?: string | null;
+  signature: PluginSignatureStatus;
+  orgName?: string;
+  orgUrl?: string;
+  repositoryUrl?: string;
+  hasChangelog: boolean;
+  shouldTrackDeflection: boolean;
+  isPending: boolean;
+};
+
+function getInstallBlockerReason(
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion?: Version
+): InstallReadinessReason | undefined {
   const isExternallyManaged = config.pluginAdminExternalManageEnabled;
   const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
   const isCompatible = Boolean(latestCompatibleVersion);
-  return (
-    plugin.type === PluginType.renderer ||
-    (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) ||
-    plugin.isDev ||
-    (!hasPermission && !isExternallyManaged) ||
-    !plugin.isPublished ||
-    !isCompatible ||
-    !isRemotePluginsAvailable
-  );
-};
+
+  if (plugin.type === PluginType.renderer) {
+    return 'renderer';
+  }
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) {
+    return 'enterprise';
+  }
+  if (plugin.isDev) {
+    return 'dev';
+  }
+  if (!hasPermission && !isExternallyManaged) {
+    return 'no_permission';
+  }
+  if (!plugin.isPublished) {
+    return 'not_published';
+  }
+  if (!isCompatible) {
+    return 'incompatible';
+  }
+  if (!isRemotePluginsAvailable) {
+    return 'remote_unavailable';
+  }
+
+  return undefined;
+}
+
+function getSignatureReadinessReason(signature: PluginSignatureStatus): InstallReadinessReason | undefined {
+  switch (signature) {
+    case PluginSignatureStatus.valid:
+    case PluginSignatureStatus.internal:
+      return undefined;
+    case PluginSignatureStatus.invalid:
+      return 'invalid_signature';
+    case PluginSignatureStatus.modified:
+      return 'modified_signature';
+    case PluginSignatureStatus.missing:
+      return 'missing_signature';
+    default:
+      return 'unsigned';
+  }
+}
+
+function getReadinessLabel(
+  status: InstallReadinessStatus,
+  reason: InstallReadinessReason,
+  isInstalled: boolean
+): string {
+  if (reason === 'compatibility_unknown') {
+    return t('plugins.install-readiness.checking', 'Checking compatibility');
+  }
+
+  if (status === 'ready') {
+    return isInstalled
+      ? t('plugins.install-readiness.compatible', 'Compatible')
+      : t('plugins.install-readiness.ready', 'Ready to install');
+  }
+
+  switch (reason) {
+    case 'incompatible':
+      return t('plugins.install-readiness.incompatible', 'Incompatible');
+    case 'renderer':
+      return t('plugins.install-readiness.cannot-install', 'Cannot install');
+    case 'enterprise':
+      return t('plugins.install-readiness.license-required', 'License required');
+    case 'dev':
+      return t('plugins.install-readiness.dev-build', 'Dev build');
+    case 'no_permission':
+      return t('plugins.install-readiness.no-permission', 'No permission');
+    case 'not_published':
+      return t('plugins.install-readiness.not-published', 'Not published');
+    case 'remote_unavailable':
+      return t('plugins.install-readiness.install-unavailable', 'Install unavailable');
+    case 'invalid_signature':
+      return t('plugins.install-readiness.invalid-signature', 'Invalid signature');
+    case 'modified_signature':
+      return t('plugins.install-readiness.modified-signature', 'Modified signature');
+    case 'missing_signature':
+    case 'unsigned':
+      return t('plugins.install-readiness.unsigned', 'Unsigned');
+    default:
+      return t('plugins.install-readiness.install-risk', 'Install risk');
+  }
+}
+
+export function getInstallReadiness(
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion?: Version
+): InstallReadiness {
+  const versionsLoaded = Array.isArray(plugin.details?.versions);
+  const compatibilityUnknown = !versionsLoaded && !latestCompatibleVersion;
+  let blockerReason = getInstallBlockerReason(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
+
+  // Missing versions is not the same as an incompatible plugin. Details often load after the header renders.
+  if (compatibilityUnknown && blockerReason === 'incompatible') {
+    blockerReason = undefined;
+  }
+
+  const signatureReason = getSignatureReadinessReason(plugin.signature);
+  const isPending = compatibilityUnknown && !blockerReason && !signatureReason;
+  const reason = blockerReason ?? signatureReason ?? (isPending ? 'compatibility_unknown' : 'ready');
+  const status: InstallReadinessStatus = blockerReason ? 'blocked' : signatureReason ? 'warning' : 'ready';
+
+  return {
+    status,
+    reason,
+    label: getReadinessLabel(status, reason, plugin.isInstalled),
+    latestCompatibleVersion,
+    grafanaDependency: latestCompatibleVersion
+      ? latestCompatibleVersion.grafanaDependency
+      : plugin.details?.grafanaDependency,
+    signature: plugin.signature,
+    orgName: plugin.orgName,
+    orgUrl: plugin.orgUrl,
+    repositoryUrl: plugin.details?.repositoryUrl || plugin.url,
+    hasChangelog: Boolean(plugin.details?.changelog),
+    shouldTrackDeflection:
+      !plugin.isInstalled && !isPending && !compatibilityUnknown && (status === 'blocked' || status === 'warning'),
+    isPending,
+  };
+}
 
 export const isLocalPluginVisibleByConfig = (p: LocalPlugin) => isNotHiddenByConfig(p.id);
 

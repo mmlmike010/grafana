@@ -147,7 +147,9 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
         <button
           type="button"
           className={styles.trigger}
-          aria-label={t('plugins.install-readiness.aria-label', 'View plugin readiness')}
+          aria-label={t('plugins.install-readiness.aria-label', 'View plugin readiness: {{status}}', {
+            status: readiness.label,
+          })}
         >
           <Badge text={readiness.label} color={getBadgeColor(readiness.status)} icon={getBadgeIcon(readiness.status)} />
         </button>

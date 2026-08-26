@@ -23,6 +23,7 @@ describe('InstallReadinessIndicator', () => {
 
     expect(screen.getByTestId('plugin-install-readiness')).toBeInTheDocument();
     expect(screen.getByText('Ready to install')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View plugin readiness: Ready to install' })).toBeInTheDocument();
     expect(tracking.trackPluginInstallDeflected).not.toHaveBeenCalled();
   });
 
@@ -30,7 +31,7 @@ describe('InstallReadinessIndicator', () => {
     const user = userEvent.setup();
     render(<InstallReadinessIndicator plugin={createPlugin()} readiness={createReadiness()} />);
 
-    await user.click(screen.getByLabelText('View plugin readiness'));
+    await user.click(screen.getByLabelText('View plugin readiness: Ready to install'));
 
     expect(screen.getByText('Compatible version: 1.0.0')).toBeInTheDocument();
     expect(screen.getByText('Grafana dependency: >=10.0.0')).toBeInTheDocument();
@@ -51,7 +52,7 @@ describe('InstallReadinessIndicator', () => {
       />
     );
 
-    await user.click(screen.getByLabelText('View plugin readiness'));
+    await user.click(screen.getByLabelText('View plugin readiness: Ready to install'));
 
     expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://github.com/example/plugin');
     expect(screen.getByRole('link', { name: 'Maintainer' })).toHaveAttribute('href', 'https://maintainer.example');
@@ -71,6 +72,7 @@ describe('InstallReadinessIndicator', () => {
     rerender(<InstallReadinessIndicator plugin={plugin} readiness={readiness} />);
 
     expect(screen.getByText('Unsigned')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View plugin readiness: Unsigned' })).toBeInTheDocument();
     expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledTimes(1);
     expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledWith(
       expect.objectContaining({

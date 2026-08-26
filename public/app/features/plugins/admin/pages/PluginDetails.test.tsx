@@ -303,7 +303,7 @@ describe('Plugin details page', () => {
 
       const { queryByRole } = renderPluginDetails({ id, isInstalled: false, isEnterprise: true });
 
-      expect(await queryByRole('button', { name: /install/i })).toBeInTheDocument();
+      expect(await queryByRole('button', { name: /^install$/i })).toBeInTheDocument();
       config.licenseInfo.stateInfo = '';
     });
 

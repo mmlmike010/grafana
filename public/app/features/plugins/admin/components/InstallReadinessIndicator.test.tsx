@@ -35,10 +35,7 @@ describe('InstallReadinessIndicator', () => {
     expect(screen.getByText('Compatible version: 1.0.0')).toBeInTheDocument();
     expect(screen.getByText('Grafana dependency: >=10.0.0')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Changelog' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute(
-      'href',
-      'https://github.com/example/plugin'
-    );
+    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://github.com/example/plugin');
     expect(screen.getByRole('link', { name: 'Maintainer' })).toHaveAttribute('href', 'https://example.com');
   });
 
@@ -56,10 +53,7 @@ describe('InstallReadinessIndicator', () => {
 
     await user.click(screen.getByLabelText('View plugin readiness'));
 
-    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute(
-      'href',
-      'https://github.com/example/plugin'
-    );
+    expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://github.com/example/plugin');
     expect(screen.getByRole('link', { name: 'Maintainer' })).toHaveAttribute('href', 'https://maintainer.example');
   });
 

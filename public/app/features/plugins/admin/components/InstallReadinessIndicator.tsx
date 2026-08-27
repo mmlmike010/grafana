@@ -32,9 +32,7 @@ export function InstallReadinessIndicator({ plugin, readiness }: Props) {
             <div>{compatibilityLabel}</div>
             {readiness.grafanaDependency && (
               <div>
-                {t('plugins.install-readiness.grafana-dependency', 'Requires Grafana {{range}}', {
-                  range: readiness.grafanaDependency,
-                })}
+                {t('plugins.install-readiness.grafana-dependency', 'Requires Grafana')} {readiness.grafanaDependency}
               </div>
             )}
           </div>

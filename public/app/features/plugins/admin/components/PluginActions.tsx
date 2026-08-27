@@ -7,8 +7,8 @@ import { Trans } from '@grafana/i18n';
 import { Icon, Stack, useStyles2 } from '@grafana/ui';
 
 import { GetStartedWithPlugin } from '../components/GetStartedWithPlugin/GetStartedWithPlugin';
-import { InstallReadinessIndicator } from '../components/InstallReadinessIndicator';
 import { InstallControlsButton } from '../components/InstallControls/InstallControlsButton';
+import { InstallReadinessIndicator } from '../components/InstallReadinessIndicator';
 import {
   getInstallReadiness,
   getLatestCompatibleVersion,

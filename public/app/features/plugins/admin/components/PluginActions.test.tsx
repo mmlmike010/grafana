@@ -42,7 +42,7 @@ describe('PluginActions', () => {
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
       expect(screen.getByRole('button', { name: 'Install readiness: Ready' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^install$/i })).toBeInTheDocument();
     });
 
     it('should warn about risk without changing the install flow', () => {

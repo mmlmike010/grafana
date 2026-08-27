@@ -381,10 +381,12 @@ describe('Plugins/Helpers', () => {
   describe('mapLocalToCatalog()', () => {
     test('maps local response to PluginCatalog', () => {
       expect(mapLocalToCatalog(localPlugin)).toEqual({
+        accessControl: undefined,
         description: 'Zabbix plugin for Grafana',
         downloads: 0,
         id: 'alexanderzobnin-zabbix-app',
         info: {
+          keywords: undefined,
           logos: {
             large: 'public/plugins/alexanderzobnin-zabbix-app/img/icn-zabbix-app.svg',
             small: 'public/plugins/alexanderzobnin-zabbix-app/img/icn-zabbix-app.svg',
@@ -400,9 +402,10 @@ describe('Plugins/Helpers', () => {
         isPublished: false,
         isDeprecated: false,
         isPreinstalled: { found: false, withVersion: false },
+        iam: undefined,
+        latestVersion: undefined,
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
-        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0,
         publishedAt: '',
         signature: 'valid',
@@ -438,6 +441,7 @@ describe('Plugins/Helpers', () => {
   describe('mapToCatalogPlugin()', () => {
     test('merges local and remote plugin data correctly', () => {
       expect(mapToCatalogPlugin(localPlugin, remotePlugin)).toEqual({
+        accessControl: undefined,
         description: 'Zabbix plugin for Grafana',
         downloads: 33645089,
         hasUpdate: false,
@@ -459,8 +463,10 @@ describe('Plugins/Helpers', () => {
         latestVersion: '4.1.5',
         isDeprecated: false,
         isPreinstalled: { found: false, withVersion: false },
+        iam: undefined,
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',

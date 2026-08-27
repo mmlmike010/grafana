@@ -36,7 +36,7 @@ describe('InstallReadinessIndicator', () => {
     expect(screen.getByText('Compatible version 2.1.0')).toBeInTheDocument();
     expect(screen.getByText('Requires Grafana >=11.0.0')).toBeInTheDocument();
     expect(screen.getByText('Signed and verified')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Changelog' })).toHaveAttribute('href', '?page=changelog');
+    expect(screen.getByRole('link', { name: 'Changelog' })).toHaveAttribute('href', '/?page=changelog');
     expect(screen.getByRole('link', { name: 'Maintainer' })).toHaveAttribute(
       'href',
       'https://grafana.com/orgs/grafana'

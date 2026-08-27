@@ -9,6 +9,7 @@ import { AccessControlAction } from 'app/types/accessControl';
 import {
   type CatalogPlugin,
   type InstancePlugin,
+  type InstallReadiness,
   type LocalPlugin,
   PluginUpdateStrategy,
   type ProvisionedPlugin,
@@ -110,6 +111,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     versionSignatureType,
     versionSignedByOrgName,
     url,
+    orgUrl,
   } = plugin;
 
   const isDisabled = !!error;
@@ -149,6 +151,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     isFullyInstalled: isDisabled,
     latestVersion: plugin.version,
     url,
+    orgUrl,
     managed: {
       enabled: managedPluginsV2Enabled ? Boolean(plugin.managed?.enabled) : isManagedPlugin(id),
       strategy: managedPluginsV2Enabled
@@ -278,6 +281,7 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     iam: local?.iam,
     latestVersion: local?.latestVersion || remote?.version || '',
     url: remote?.url || '',
+    orgUrl: remote?.orgUrl,
     managed: {
       enabled: managedPluginsV2Enabled ? Boolean(remote?.managed?.enabled) : isManagedPlugin(id),
       strategy: managedPluginsV2Enabled
@@ -360,6 +364,61 @@ export function getLatestCompatibleVersion(versions: Version[] | undefined): Ver
   const [latest] = versions.filter((v) => Boolean(v.isCompatible));
 
   return latest;
+}
+
+export function getInstallReadiness(
+  plugin: CatalogPlugin,
+  latestCompatibleVersion: Version | undefined,
+  isRemotePluginsAvailable: boolean
+): InstallReadiness {
+  const grafanaDependency =
+    latestCompatibleVersion?.grafanaDependency ??
+    plugin.details?.grafanaDependency ??
+    plugin.details?.versions?.[0]?.grafanaDependency ??
+    undefined;
+  const base = {
+    version: latestCompatibleVersion?.version,
+    grafanaDependency: grafanaDependency || undefined,
+    signature: plugin.signature,
+  };
+
+  if (plugin.type === PluginType.renderer) {
+    return { ...base, status: 'blocked', reason: 'renderer_plugin' };
+  }
+
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) {
+    return { ...base, status: 'blocked', reason: 'enterprise_license_required' };
+  }
+
+  if (!contextSrv.hasPermission(AccessControlAction.PluginsInstall) && !config.pluginAdminExternalManageEnabled) {
+    return { ...base, status: 'blocked', reason: 'insufficient_permissions' };
+  }
+
+  if (!plugin.isPublished) {
+    return { ...base, status: 'blocked', reason: 'unpublished_plugin' };
+  }
+
+  if (!isRemotePluginsAvailable) {
+    return { ...base, status: 'blocked', reason: 'catalog_unavailable' };
+  }
+
+  if (!latestCompatibleVersion) {
+    return { ...base, status: 'blocked', reason: 'incompatible_grafana_version' };
+  }
+
+  if (plugin.signature === PluginSignatureStatus.invalid) {
+    return { ...base, status: 'blocked', reason: 'invalid_signature' };
+  }
+
+  if (plugin.signature === PluginSignatureStatus.modified) {
+    return { ...base, status: 'blocked', reason: 'modified_signature' };
+  }
+
+  if (plugin.signature === PluginSignatureStatus.missing) {
+    return { ...base, status: 'warning', reason: 'unsigned_plugin' };
+  }
+
+  return { ...base, status: 'ready' };
 }
 
 export const isInstallControlsEnabled = () => config.pluginAdminEnabled;

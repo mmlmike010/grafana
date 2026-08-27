@@ -5,6 +5,7 @@ import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType } from '@gr
 import * as helpers from '../helpers';
 import * as hooks from '../state/hooks';
 import { initialState } from '../state/reducer';
+import * as tracking from '../tracking';
 import { type CatalogPlugin, PluginStatus, type ReducerState, type Version } from '../types';
 
 import { getInstallControlsDisabled, getPluginStatus, PluginActions } from './PluginActions';
@@ -16,7 +17,14 @@ describe('PluginActions', () => {
     plugins = { ...initialState };
     jest.spyOn(helpers, 'isInstallControlsEnabled').mockReturnValue(true);
     jest.spyOn(helpers, 'hasInstallControlWarning').mockReturnValue(false);
+    jest.spyOn(helpers, 'getInstallReadiness').mockReturnValue({
+      status: 'ready',
+      version: '1.0.0',
+      grafanaDependency: '>=10.0.0',
+      signature: PluginSignatureStatus.valid,
+    });
     jest.spyOn(hooks, 'useIsRemotePluginsAvailable').mockReturnValue(true);
+    jest.spyOn(tracking, 'trackPluginInstallDeflected').mockImplementation();
   });
 
   afterEach(() => {
@@ -33,7 +41,42 @@ describe('PluginActions', () => {
     it('should render install button for non-installed plugin', () => {
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
+      expect(screen.getByRole('button', { name: 'Install readiness: Ready' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+    });
+
+    it('should warn about risk without changing the install flow', () => {
+      jest.spyOn(helpers, 'getInstallReadiness').mockReturnValue({
+        status: 'warning',
+        reason: 'unsigned_plugin',
+        version: '1.0.0',
+        signature: PluginSignatureStatus.missing,
+      });
+
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(screen.getByRole('button', { name: 'Install readiness: Review' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^install$/i })).toBeInTheDocument();
+      expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledWith(
+        expect.objectContaining({
+          blocker_reason: 'unsigned_plugin',
+          readiness_status: 'warning',
+        })
+      );
+    });
+
+    it('should prevent install when readiness is blocked', () => {
+      jest.spyOn(helpers, 'getInstallReadiness').mockReturnValue({
+        status: 'blocked',
+        reason: 'invalid_signature',
+        version: '1.0.0',
+        signature: PluginSignatureStatus.invalid,
+      });
+
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(screen.getByRole('button', { name: 'Install readiness: Blocked' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^install$/i })).not.toBeInTheDocument();
     });
 
     it('should render uninstall button for installed plugin', () => {

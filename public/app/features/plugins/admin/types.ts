@@ -65,6 +65,7 @@ export interface CatalogPlugin extends WithAccessControlMetadata {
   iam?: IdentityAccessManagement;
   isProvisioned?: boolean;
   url?: string;
+  orgUrl?: string;
   managed: {
     enabled: boolean;
     strategy?: PluginUpdateStrategy;
@@ -274,6 +275,27 @@ export interface Version {
   grafanaDependency: string | null;
   angularDetected?: boolean;
   status?: string; // Status of the version: 'active', 'deprecated'
+}
+
+export type InstallReadinessStatus = 'ready' | 'warning' | 'blocked';
+
+export type InstallReadinessReason =
+  | 'catalog_unavailable'
+  | 'enterprise_license_required'
+  | 'incompatible_grafana_version'
+  | 'insufficient_permissions'
+  | 'invalid_signature'
+  | 'modified_signature'
+  | 'renderer_plugin'
+  | 'unpublished_plugin'
+  | 'unsigned_plugin';
+
+export interface InstallReadiness {
+  status: InstallReadinessStatus;
+  reason?: InstallReadinessReason;
+  version?: string;
+  grafanaDependency?: string;
+  signature: PluginSignatureStatus;
 }
 
 export interface PluginDetails {

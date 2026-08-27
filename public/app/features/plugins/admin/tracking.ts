@@ -1,5 +1,7 @@
 import { reportInteraction } from '@grafana/runtime';
 
+import { type InstallReadinessReason, type InstallReadinessStatus } from './types';
+
 type PluginTrackingProps = {
   // The ID of the plugin (e.g. grafana-azure-monitor-datasource)
   plugin_id: string;
@@ -15,4 +17,14 @@ export const trackPluginInstalled = (props: PluginTrackingProps) => {
 
 export const trackPluginUninstalled = (props: PluginTrackingProps) => {
   reportInteraction('grafana_plugin_uninstall_clicked', props);
+};
+
+export const trackPluginInstallDeflected = (
+  props: PluginTrackingProps & {
+    blocker_reason: InstallReadinessReason;
+    readiness_status: Exclude<InstallReadinessStatus, 'ready'>;
+    selected_version?: string;
+  }
+) => {
+  reportInteraction('grafana_plugin_install_deflected', props);
 };

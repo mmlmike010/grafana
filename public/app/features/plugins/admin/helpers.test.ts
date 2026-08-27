@@ -1,6 +1,7 @@
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType, PluginType } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { setTestFlags } from '@grafana/test-utils/unstable';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import {
   mapToCatalogPlugin,
@@ -14,6 +15,7 @@ import {
   isRemotePluginVisibleByConfig,
   isNonAngularVersion,
   isDisabledAngularPlugin,
+  getInstallReadiness,
 } from './helpers';
 import { getLocalPluginMock, getRemotePluginMock, getCatalogPluginMock } from './mocks/mockHelpers';
 import {
@@ -231,6 +233,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',
@@ -378,10 +381,12 @@ describe('Plugins/Helpers', () => {
   describe('mapLocalToCatalog()', () => {
     test('maps local response to PluginCatalog', () => {
       expect(mapLocalToCatalog(localPlugin)).toEqual({
+        accessControl: undefined,
         description: 'Zabbix plugin for Grafana',
         downloads: 0,
         id: 'alexanderzobnin-zabbix-app',
         info: {
+          keywords: undefined,
           logos: {
             large: 'public/plugins/alexanderzobnin-zabbix-app/img/icn-zabbix-app.svg',
             small: 'public/plugins/alexanderzobnin-zabbix-app/img/icn-zabbix-app.svg',
@@ -397,6 +402,8 @@ describe('Plugins/Helpers', () => {
         isPublished: false,
         isDeprecated: false,
         isPreinstalled: { found: false, withVersion: false },
+        iam: undefined,
+        latestVersion: undefined,
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
         popularity: 0,
@@ -434,6 +441,7 @@ describe('Plugins/Helpers', () => {
   describe('mapToCatalogPlugin()', () => {
     test('merges local and remote plugin data correctly', () => {
       expect(mapToCatalogPlugin(localPlugin, remotePlugin)).toEqual({
+        accessControl: undefined,
         description: 'Zabbix plugin for Grafana',
         downloads: 33645089,
         hasUpdate: false,
@@ -455,8 +463,10 @@ describe('Plugins/Helpers', () => {
         latestVersion: '4.1.5',
         isDeprecated: false,
         isPreinstalled: { found: false, withVersion: false },
+        iam: undefined,
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',
@@ -1073,6 +1083,80 @@ describe('Plugins/Helpers', () => {
     it('should return false for plugins that are not disabled', () => {
       const plugin = { isDisabled: false, error: undefined } as CatalogPlugin;
       expect(isDisabledAngularPlugin(plugin)).toBe(false);
+    });
+  });
+
+  describe('getInstallReadiness()', () => {
+    const compatibleVersion = {
+      version: '4.1.5',
+      createdAt: '2021-05-18T14:52:59.000Z',
+      isCompatible: true,
+      grafanaDependency: '>=10.0.0',
+    };
+
+    beforeEach(() => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test('is ready for a compatible signed plugin', () => {
+      const plugin = getCatalogPluginMock({ signature: PluginSignatureStatus.valid });
+
+      expect(getInstallReadiness(plugin, compatibleVersion, true)).toEqual({
+        status: 'ready',
+        version: '4.1.5',
+        grafanaDependency: '>=10.0.0',
+        signature: PluginSignatureStatus.valid,
+      });
+    });
+
+    test('warns for an unsigned compatible plugin', () => {
+      const plugin = getCatalogPluginMock({ signature: PluginSignatureStatus.missing });
+
+      expect(getInstallReadiness(plugin, compatibleVersion, true)).toMatchObject({
+        status: 'warning',
+        reason: 'unsigned_plugin',
+      });
+    });
+
+    test.each([
+      [PluginSignatureStatus.invalid, 'invalid_signature'],
+      [PluginSignatureStatus.modified, 'modified_signature'],
+    ])('blocks the %s signature state', (signature, reason) => {
+      const plugin = getCatalogPluginMock({ signature });
+
+      expect(getInstallReadiness(plugin, compatibleVersion, true)).toMatchObject({
+        status: 'blocked',
+        reason,
+      });
+    });
+
+    test('blocks plugins without a compatible version and retains the known Grafana range', () => {
+      const plugin = getCatalogPluginMock({
+        details: {
+          links: [],
+          versions: [{ ...compatibleVersion, isCompatible: false }],
+          grafanaDependency: '>=12.0.0',
+        },
+      });
+
+      expect(getInstallReadiness(plugin, undefined, true)).toMatchObject({
+        status: 'blocked',
+        reason: 'incompatible_grafana_version',
+        grafanaDependency: '>=12.0.0',
+      });
+    });
+
+    test('blocks when the remote catalog is unavailable', () => {
+      const plugin = getCatalogPluginMock();
+
+      expect(getInstallReadiness(plugin, compatibleVersion, false)).toMatchObject({
+        status: 'blocked',
+        reason: 'catalog_unavailable',
+      });
     });
   });
 });

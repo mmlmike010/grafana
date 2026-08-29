@@ -80,6 +80,42 @@ describe('PluginActions', () => {
       expect(screen.queryByRole('button', { name: /install|uninstall|update/i })).not.toBeInTheDocument();
     });
 
+    it('renders the install readiness indicator to the left of the install button', () => {
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      const indicator = screen.getByTestId('plugin-install-readiness');
+      const installButton = screen.getByRole('button', { name: /^install$/i });
+
+      expect(indicator).toHaveAttribute('data-status', 'ready');
+      expect(indicator.compareDocumentPosition(installButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('renders a blocked readiness indicator when the plugin is incompatible', () => {
+      const incompatiblePlugin = createPluginStub({
+        details: {
+          links: [],
+          versions: [
+            {
+              version: '2.0.0',
+              createdAt: '',
+              isCompatible: false,
+              grafanaDependency: '>=99.0.0',
+            },
+          ],
+        },
+      });
+      render(<PluginActions plugin={incompatiblePlugin} />, { preloadedState: { plugins } });
+
+      expect(screen.getByTestId('plugin-install-readiness')).toHaveAttribute('data-status', 'blocked');
+    });
+
+    it('renders a warning readiness indicator when the plugin is unsigned', () => {
+      const unsignedPlugin = createPluginStub({ signature: PluginSignatureStatus.missing });
+      render(<PluginActions plugin={unsignedPlugin} />, { preloadedState: { plugins } });
+
+      expect(screen.getByTestId('plugin-install-readiness')).toHaveAttribute('data-status', 'warning');
+    });
+
     it('should render install controls when there is an installed disabled angular plugin with a non-angular version available', async () => {
       jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(createVersion({ angularDetected: false }));
       const disabledAngularPlugin = createPluginStub({
@@ -263,6 +299,17 @@ function createPluginStub(overrides?: Partial<CatalogPlugin>): CatalogPlugin {
     isEnterprise: false,
     isDeprecated: false,
     isPreinstalled: { found: false, withVersion: false },
+    details: {
+      links: [],
+      versions: [
+        {
+          version: '1.0.0',
+          createdAt: '',
+          isCompatible: true,
+          grafanaDependency: '>=9.0.0',
+        },
+      ],
+    },
     ...overrides,
   };
 }

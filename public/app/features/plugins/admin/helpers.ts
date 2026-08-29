@@ -8,12 +8,15 @@ import { AccessControlAction } from 'app/types/accessControl';
 
 import {
   type CatalogPlugin,
+  type InstallReadiness,
+  type InstallReadinessBlockReason,
   type InstancePlugin,
   type LocalPlugin,
   PluginUpdateStrategy,
   type ProvisionedPlugin,
   type RemotePlugin,
   RemotePluginStatus,
+  type SignatureReadiness,
   type Version,
 } from './types';
 
@@ -128,6 +131,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     },
     name,
     orgName,
+    orgUrl: plugin.orgUrl || undefined,
     popularity,
     publishedAt,
     signature: getPluginSignature({ remote: plugin, error }),
@@ -186,6 +190,7 @@ export function mapLocalToCatalog(plugin: LocalPlugin, error?: PluginError): Cat
     info: { logos, keywords },
     name,
     orgName: author.name,
+    orgUrl: author.url || undefined,
     popularity: 0,
     publishedAt: '',
     signature: getPluginSignature({ local: plugin, error }),
@@ -261,6 +266,7 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     name: remote?.name || local?.name || '',
     // TODO<check if we would like to keep preferring the remote version>
     orgName: remote?.orgName || local?.info.author.name || '',
+    orgUrl: remote?.orgUrl || local?.info.author.url || undefined,
     popularity: remote?.popularity || 0,
     publishedAt: remote?.createdAt || '',
     type,
@@ -364,24 +370,97 @@ export function getLatestCompatibleVersion(versions: Version[] | undefined): Ver
 
 export const isInstallControlsEnabled = () => config.pluginAdminEnabled;
 
+export function getInstallBlockReasons(
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion?: Version
+): InstallReadinessBlockReason[] {
+  const reasons: InstallReadinessBlockReason[] = [];
+  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
+  const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
+
+  if (plugin.type === PluginType.renderer) {
+    reasons.push('renderer');
+  }
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) {
+    reasons.push('enterprise_unlicensed');
+  }
+  if (plugin.isDev) {
+    reasons.push('dev_build');
+  }
+  if (!hasPermission && !isExternallyManaged) {
+    reasons.push('no_permission');
+  }
+  if (!plugin.isPublished) {
+    reasons.push('unpublished');
+  }
+  if (!latestCompatibleVersion) {
+    reasons.push('no_compatible_version');
+  }
+  if (!isRemotePluginsAvailable) {
+    reasons.push('remote_catalog_unavailable');
+  }
+
+  return reasons;
+}
+
+function getSignatureReadiness(plugin: CatalogPlugin): SignatureReadiness {
+  switch (plugin.signature) {
+    case PluginSignatureStatus.internal:
+      return { kind: 'core' };
+    case PluginSignatureStatus.valid:
+      return { kind: 'valid', type: plugin.signatureType, org: plugin.signatureOrg };
+    case PluginSignatureStatus.invalid:
+    case PluginSignatureStatus.modified:
+      return { kind: 'invalid', status: plugin.signature };
+    case PluginSignatureStatus.missing:
+    default:
+      return { kind: 'unsigned' };
+  }
+}
+
+export function getInstallReadiness(
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion?: Version
+): InstallReadiness {
+  const reasons = getInstallBlockReasons(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
+  const signature = getSignatureReadiness(plugin);
+  const base = {
+    signature,
+    latestCompatibleVersion,
+    grafanaDependency: latestCompatibleVersion?.grafanaDependency ?? plugin.details?.grafanaDependency,
+    changelogAvailable: Boolean(plugin.details?.changelog),
+    orgName: plugin.orgName,
+    orgUrl: plugin.orgUrl,
+    sourceUrl: plugin.url,
+  };
+
+  const [primaryReason, ...additionalReasons] = reasons;
+  if (primaryReason) {
+    return {
+      status: 'blocked',
+      reasons: [primaryReason, ...additionalReasons],
+      ...base,
+    };
+  }
+
+  if (signature.kind === 'unsigned') {
+    return { status: 'warning', warningReason: 'unsigned_signature', ...base };
+  }
+
+  if (signature.kind === 'invalid') {
+    return { status: 'warning', warningReason: 'invalid_signature', ...base };
+  }
+
+  return { status: 'ready', ...base };
+}
+
 export const hasInstallControlWarning = (
   plugin: CatalogPlugin,
   isRemotePluginsAvailable: boolean,
   latestCompatibleVersion?: Version
-) => {
-  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
-  const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
-  const isCompatible = Boolean(latestCompatibleVersion);
-  return (
-    plugin.type === PluginType.renderer ||
-    (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) ||
-    plugin.isDev ||
-    (!hasPermission && !isExternallyManaged) ||
-    !plugin.isPublished ||
-    !isCompatible ||
-    !isRemotePluginsAvailable
-  );
-};
+) => getInstallBlockReasons(plugin, isRemotePluginsAvailable, latestCompatibleVersion).length > 0;
 
 export const isLocalPluginVisibleByConfig = (p: LocalPlugin) => isNotHiddenByConfig(p.id);
 

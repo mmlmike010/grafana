@@ -45,6 +45,7 @@ export interface CatalogPlugin extends WithAccessControlMetadata {
   latestVersion?: string;
   name: string;
   orgName: string;
+  orgUrl?: string;
   signature: PluginSignatureStatus;
   signatureType?: PluginSignatureType;
   signatureOrg?: string;
@@ -275,6 +276,39 @@ export interface Version {
   angularDetected?: boolean;
   status?: string; // Status of the version: 'active', 'deprecated'
 }
+
+export type InstallReadinessBlockReason =
+  | 'renderer'
+  | 'enterprise_unlicensed'
+  | 'dev_build'
+  | 'unpublished'
+  | 'no_permission'
+  | 'no_compatible_version'
+  | 'remote_catalog_unavailable';
+
+export type SignatureReadiness =
+  | { kind: 'core' }
+  | { kind: 'valid'; type?: PluginSignatureType; org?: string }
+  | { kind: 'unsigned' }
+  | { kind: 'invalid'; status: PluginSignatureStatus.invalid | PluginSignatureStatus.modified };
+
+type InstallReadinessBase = {
+  signature: SignatureReadiness;
+  latestCompatibleVersion?: Version;
+  grafanaDependency?: string | null;
+  changelogAvailable: boolean;
+  orgName: string;
+  orgUrl?: string;
+  sourceUrl?: string;
+};
+
+export type InstallReadiness =
+  | ({ status: 'ready' } & InstallReadinessBase)
+  | ({ status: 'warning'; warningReason: 'unsigned_signature' | 'invalid_signature' } & InstallReadinessBase)
+  | ({
+      status: 'blocked';
+      reasons: [InstallReadinessBlockReason, ...InstallReadinessBlockReason[]];
+    } & InstallReadinessBase);
 
 export interface PluginDetails {
   remote?: RemotePlugin;

@@ -1,0 +1,14 @@
+{
+  "name": "Grafana",
+  "install": "export NVM_DIR=\"$HOME/.nvm\" && [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\" && nvm install && export PATH=\"$HOME/.nvm/versions/node/$(cat .nvmrc)/bin:$PATH\" && corepack enable && yarn install --immutable",
+  "terminals": [
+    {
+      "name": "backend",
+      "command": "export PATH=\"$HOME/.nvm/versions/node/$(cat .nvmrc)/bin:$PATH\" && make run"
+    },
+    {
+      "name": "frontend",
+      "command": "export PATH=\"$HOME/.nvm/versions/node/$(cat .nvmrc)/bin:$PATH\" && yarn start"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 
 import { PluginSignatureStatus, PluginSignatureType } from '@grafana/data';
 
-import { type CatalogPlugin, type InstallReadiness, type Version } from '../types';
+import { type CatalogPlugin, type Version } from '../types';
 
 import { InstallReadinessIndicator } from './InstallReadinessIndicator';
 
@@ -19,12 +19,14 @@ describe('InstallReadinessIndicator', () => {
     render(
       <InstallReadinessIndicator
         plugin={createPluginStub()}
-        readiness={createReadiness({
+        readiness={{
           status: 'ready',
           signature: { kind: 'valid', type: PluginSignatureType.community, org: 'grafana' },
           latestCompatibleVersion: compatibleVersion,
           grafanaDependency: '>=9.0.0',
-        })}
+          changelogAvailable: false,
+          orgName: 'Test Org',
+        }}
       />
     );
 
@@ -37,12 +39,14 @@ describe('InstallReadinessIndicator', () => {
     render(
       <InstallReadinessIndicator
         plugin={createPluginStub({ signature: PluginSignatureStatus.missing })}
-        readiness={createReadiness({
+        readiness={{
           status: 'warning',
           warningReason: 'unsigned_signature',
           signature: { kind: 'unsigned' },
           latestCompatibleVersion: compatibleVersion,
-        })}
+          changelogAvailable: false,
+          orgName: 'Test Org',
+        }}
       />
     );
 
@@ -54,11 +58,13 @@ describe('InstallReadinessIndicator', () => {
     render(
       <InstallReadinessIndicator
         plugin={createPluginStub()}
-        readiness={createReadiness({
+        readiness={{
           status: 'blocked',
           reasons: ['no_compatible_version'],
           signature: { kind: 'valid' },
-        })}
+          changelogAvailable: false,
+          orgName: 'Test Org',
+        }}
       />
     );
 
@@ -76,7 +82,7 @@ describe('InstallReadinessIndicator', () => {
             changelog: 'Release notes',
           },
         })}
-        readiness={createReadiness({
+        readiness={{
           status: 'ready',
           signature: { kind: 'valid' },
           latestCompatibleVersion: compatibleVersion,
@@ -85,7 +91,7 @@ describe('InstallReadinessIndicator', () => {
           orgName: 'Grafana Labs',
           orgUrl: 'https://grafana.com',
           sourceUrl: 'https://github.com/grafana/ace-svg-panel',
-        })}
+        }}
       />
     );
 
@@ -102,19 +108,6 @@ describe('InstallReadinessIndicator', () => {
     );
   });
 });
-
-function createReadiness(overrides: InstallReadiness): InstallReadiness {
-  return {
-    latestCompatibleVersion: undefined,
-    grafanaDependency: undefined,
-    changelogAvailable: false,
-    orgName: 'Test Org',
-    orgUrl: undefined,
-    sourceUrl: undefined,
-    signature: { kind: 'valid' },
-    ...overrides,
-  };
-}
 
 function createPluginStub(overrides?: Partial<CatalogPlugin>): CatalogPlugin {
   return {

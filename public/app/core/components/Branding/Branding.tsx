@@ -121,6 +121,6 @@ export class Branding {
   static LoginTitle = 'Welcome to Grafana';
   static HideEdition = false;
   static GetLoginSubTitle = (): null | string => {
-    return null;
+    return 'Monitor everything in one place.';
   };
 }

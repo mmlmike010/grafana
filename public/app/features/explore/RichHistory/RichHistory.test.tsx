@@ -67,10 +67,11 @@ describe('RichHistory', () => {
   it('should render tabs as defined', () => {
     setup();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(3);
+    expect(tabs).toHaveLength(4);
     expect(tabs[0]).toHaveTextContent('Query history');
     expect(tabs[1]).toHaveTextContent('Starred');
-    expect(tabs[2]).toHaveTextContent('Settings');
+    expect(tabs[2]).toHaveTextContent('Saved sessions');
+    expect(tabs[3]).toHaveTextContent('Settings');
   });
 
   it('should render defined default', () => {

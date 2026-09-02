@@ -12,6 +12,7 @@ import { useSelector } from 'app/types/store';
 
 import { supportedFeatures } from '../../../core/history/richHistoryStorageProvider';
 import { Tabs } from '../QueriesDrawer/QueriesDrawerContext';
+import { SavedSessionsTab } from '../SavedSessions/SavedSessionsTab';
 import { selectExploreDSMaps } from '../state/selectors';
 
 import { RichHistoryQueriesTab } from './RichHistoryQueriesTab';
@@ -127,6 +128,13 @@ export function RichHistory(props: RichHistoryProps) {
     icon: 'star',
   };
 
+  const SavedSessionsTabConfig: TabConfig = {
+    label: t('explore.rich-history.saved-sessions', 'Saved sessions'),
+    value: Tabs.SavedSessions,
+    content: <SavedSessionsTab />,
+    icon: 'save',
+  };
+
   const SettingsTab: TabConfig = {
     label: t('explore.rich-history.settings', 'Settings'),
     value: Tabs.Settings,
@@ -144,7 +152,7 @@ export function RichHistory(props: RichHistoryProps) {
     icon: 'sliders-v-alt',
   };
 
-  let tabs = [QueriesTab, StarredTab, SettingsTab];
+  let tabs = [QueriesTab, StarredTab, SavedSessionsTabConfig, SettingsTab];
   return (
     <TabbedContainer
       tabs={tabs}

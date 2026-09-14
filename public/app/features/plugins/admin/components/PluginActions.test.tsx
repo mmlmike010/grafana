@@ -36,6 +36,43 @@ describe('PluginActions', () => {
       expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
     });
 
+    it('should render the install readiness indicator immediately left of the install button', () => {
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(createVersion({ grafanaDependency: '>=9.0.0' }));
+
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      const indicator = screen.getByTestId('install-readiness-indicator');
+      const install = screen.getByRole('button', { name: /install/i });
+
+      expect(indicator).toHaveAttribute('data-readiness-status', 'ready');
+      expect(indicator.compareDocumentPosition(install) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('should render a blocked readiness indicator when the plugin is incompatible', () => {
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(undefined);
+
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(screen.getByTestId('install-readiness-indicator')).toHaveAttribute('data-readiness-status', 'blocked');
+    });
+
+    it('should render a warning readiness indicator for unsigned plugins', () => {
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(createVersion());
+
+      render(<PluginActions plugin={createPluginStub({ signature: PluginSignatureStatus.missing })} />, {
+        preloadedState: { plugins },
+      });
+
+      expect(screen.getByTestId('install-readiness-indicator')).toHaveAttribute('data-readiness-status', 'warning');
+    });
+
+    it('should not render the install readiness indicator for core plugins', () => {
+      const corePlugin = createPluginStub({ isCore: true });
+      render(<PluginActions plugin={corePlugin} />, { preloadedState: { plugins } });
+
+      expect(screen.queryByTestId('install-readiness-indicator')).not.toBeInTheDocument();
+    });
+
     it('should render uninstall button for installed plugin', () => {
       const installedPlugin = createPluginStub({ isInstalled: true });
       render(<PluginActions plugin={installedPlugin} />, { preloadedState: { plugins } });

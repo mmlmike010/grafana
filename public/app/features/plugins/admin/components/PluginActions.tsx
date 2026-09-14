@@ -7,6 +7,7 @@ import { Icon, Stack, useStyles2 } from '@grafana/ui';
 
 import { GetStartedWithPlugin } from '../components/GetStartedWithPlugin/GetStartedWithPlugin';
 import { InstallControlsButton } from '../components/InstallControls/InstallControlsButton';
+import { InstallReadinessIndicator } from '../components/InstallReadinessIndicator';
 import {
   getLatestCompatibleVersion,
   hasInstallControlWarning,
@@ -38,6 +39,13 @@ export const PluginActions = ({ plugin }: Props) => {
   return (
     <Stack direction="column">
       <Stack alignItems="center">
+        {!plugin.isCore && (
+          <InstallReadinessIndicator
+            plugin={plugin}
+            latestCompatibleVersion={latestCompatibleVersion}
+            isRemotePluginsAvailable={isRemotePluginsAvailable}
+          />
+        )}
         {!isInstallControlsDisabled && (
           <InstallControlsButton
             plugin={plugin}

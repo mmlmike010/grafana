@@ -2,6 +2,8 @@ import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType, PluginType
 import { config } from '@grafana/runtime';
 import { setTestFlags } from '@grafana/test-utils/unstable';
 
+import { contextSrv } from 'app/core/services/context_srv';
+
 import {
   mapToCatalogPlugin,
   mapRemoteToCatalog,
@@ -14,6 +16,7 @@ import {
   isRemotePluginVisibleByConfig,
   isNonAngularVersion,
   isDisabledAngularPlugin,
+  getInstallReadiness,
 } from './helpers';
 import { getLocalPluginMock, getRemotePluginMock, getCatalogPluginMock } from './mocks/mockHelpers';
 import {
@@ -22,6 +25,7 @@ import {
   RemotePluginStatus,
   type Version,
   type CatalogPlugin,
+  PluginTabIds,
   PluginUpdateStrategy,
 } from './types';
 
@@ -241,6 +245,7 @@ describe('Plugins/Helpers', () => {
         isFullyInstalled: false,
         angularDetected: false,
         url: 'https://github.com/alexanderzobnin/grafana-zabbix',
+        orgUrl: 'https://github.com/alexanderzobnin',
         managed: {
           enabled: false,
           strategy: undefined,
@@ -468,6 +473,7 @@ describe('Plugins/Helpers', () => {
         isFullyInstalled: true,
         angularDetected: false,
         url: 'https://github.com/alexanderzobnin/grafana-zabbix',
+        orgUrl: 'https://github.com/alexanderzobnin',
         managed: {
           enabled: false,
           strategy: undefined,
@@ -1073,6 +1079,120 @@ describe('Plugins/Helpers', () => {
     it('should return false for plugins that are not disabled', () => {
       const plugin = { isDisabled: false, error: undefined } as CatalogPlugin;
       expect(isDisabledAngularPlugin(plugin)).toBe(false);
+    });
+  });
+
+  describe('getInstallReadiness()', () => {
+    const compatibleVersion: Version = {
+      version: '2.1.0',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isCompatible: true,
+      grafanaDependency: '>=10.0.0',
+    };
+
+    beforeEach(() => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('returns ready for a signed, compatible catalog plugin', () => {
+      const plugin = getCatalogPluginMock({
+        signature: PluginSignatureStatus.valid,
+        orgUrl: 'https://example.com/maintainer',
+        details: {
+          ...getCatalogPluginMock().details!,
+          changelog: '## 2.1.0',
+          grafanaDependency: '>=10.0.0',
+        },
+      });
+
+      expect(getInstallReadiness(plugin, compatibleVersion)).toEqual({
+        status: 'ready',
+        blockerReason: undefined,
+        isCompatible: true,
+        latestCompatibleVersion: '2.1.0',
+        grafanaDependency: '>=10.0.0',
+        signature: PluginSignatureStatus.valid,
+        changelogHref: `/plugins/${plugin.id}?page=${PluginTabIds.CHANGELOG}`,
+        maintainerHref: 'https://example.com/maintainer',
+        maintainerName: plugin.orgName,
+      });
+    });
+
+    it('blocks incompatible plugins and prefers that over signature issues', () => {
+      const plugin = getCatalogPluginMock({ signature: PluginSignatureStatus.missing });
+
+      expect(getInstallReadiness(plugin, undefined)).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'incompatible',
+        isCompatible: false,
+        latestCompatibleVersion: undefined,
+      });
+    });
+
+    it('blocks renderer plugins even when a compatible version exists', () => {
+      const plugin = getCatalogPluginMock({ type: PluginType.renderer });
+
+      expect(getInstallReadiness(plugin, compatibleVersion)).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'renderer',
+      });
+    });
+
+    it('blocks invalid and modified signatures', () => {
+      expect(
+        getInstallReadiness(getCatalogPluginMock({ signature: PluginSignatureStatus.invalid }), compatibleVersion)
+      ).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'invalid_signature',
+      });
+
+      expect(
+        getInstallReadiness(getCatalogPluginMock({ signature: PluginSignatureStatus.modified }), compatibleVersion)
+      ).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'modified_signature',
+      });
+    });
+
+    it('warns for unsigned, unpublished, and missing-permission plugins', () => {
+      expect(
+        getInstallReadiness(getCatalogPluginMock({ signature: PluginSignatureStatus.missing }), compatibleVersion)
+      ).toMatchObject({
+        status: 'warning',
+        blockerReason: 'unsigned',
+      });
+
+      expect(
+        getInstallReadiness(
+          getCatalogPluginMock({ signature: PluginSignatureStatus.valid, isPublished: false }),
+          compatibleVersion
+        )
+      ).toMatchObject({
+        status: 'warning',
+        blockerReason: 'unpublished',
+      });
+
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(false);
+
+      expect(
+        getInstallReadiness(getCatalogPluginMock({ signature: PluginSignatureStatus.valid }), compatibleVersion)
+      ).toMatchObject({
+        status: 'warning',
+        blockerReason: 'no_permission',
+      });
+    });
+
+    it('falls back to plugin url when orgUrl is missing', () => {
+      const plugin = getCatalogPluginMock({
+        orgUrl: undefined,
+        url: 'https://github.com/example/plugin',
+      });
+
+      expect(getInstallReadiness(plugin, compatibleVersion).maintainerHref).toBe('https://github.com/example/plugin');
     });
   });
 });

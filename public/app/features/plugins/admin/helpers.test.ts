@@ -404,6 +404,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0,
         publishedAt: '',
         signature: 'valid',
@@ -1139,6 +1140,18 @@ describe('Plugins/Helpers', () => {
       expect(getInstallReadiness(plugin, compatibleVersion)).toMatchObject({
         status: 'blocked',
         blockerReason: 'renderer',
+      });
+    });
+
+    it('treats backend unsigned signatures as an unsigned warning', () => {
+      const plugin = getCatalogPluginMock({
+        signature: 'unsigned' as PluginSignatureStatus,
+      });
+
+      expect(getInstallReadiness(plugin, compatibleVersion)).toMatchObject({
+        status: 'warning',
+        blockerReason: 'unsigned',
+        signature: 'unsigned',
       });
     });
 

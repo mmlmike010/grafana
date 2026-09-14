@@ -189,6 +189,7 @@ export function mapLocalToCatalog(plugin: LocalPlugin, error?: PluginError): Cat
     info: { logos, keywords },
     name,
     orgName: author.name,
+    orgUrl: author.url || undefined,
     popularity: 0,
     publishedAt: '',
     signature: getPluginSignature({ local: plugin, error }),
@@ -413,13 +414,16 @@ export type InstallReadiness = {
   maintainerName?: string;
 };
 
-function getSignatureBlockerReason(signature: PluginSignatureStatus): InstallReadinessBlockerReason | undefined {
+function getSignatureBlockerReason(
+  signature: PluginSignatureStatus | string
+): InstallReadinessBlockerReason | undefined {
   switch (signature) {
     case PluginSignatureStatus.invalid:
       return 'invalid_signature';
     case PluginSignatureStatus.modified:
       return 'modified_signature';
     case PluginSignatureStatus.missing:
+    case 'unsigned':
       return 'unsigned';
     default:
       return undefined;

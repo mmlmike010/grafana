@@ -99,12 +99,13 @@ function getBlockerMessage(reason: InstallReadinessBlockerReason): string {
   }
 }
 
-function getSignatureLabel(signature: PluginSignatureStatus): string {
+function getSignatureLabel(signature: PluginSignatureStatus | string): string {
   switch (signature) {
     case PluginSignatureStatus.valid:
     case PluginSignatureStatus.internal:
       return t('plugins.install-readiness.signature-signed', 'Signed');
     case PluginSignatureStatus.missing:
+    case 'unsigned':
       return t('plugins.install-readiness.signature-unsigned', 'Unsigned');
     case PluginSignatureStatus.invalid:
       return t('plugins.install-readiness.signature-invalid', 'Invalid signature');

@@ -7,6 +7,7 @@ import { selectRichHistorySettings } from '../state/selectors';
 export enum Tabs {
   RichHistory = 'Query history',
   Starred = 'Starred',
+  SavedSessions = 'Saved sessions',
   Settings = 'Settings',
 }
 

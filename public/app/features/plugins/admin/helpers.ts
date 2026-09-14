@@ -306,7 +306,10 @@ export enum Sorters {
 
 export const sortPlugins = (plugins: CatalogPlugin[], sortBy: Sorters) => {
   const sorters: { [name: string]: (a: CatalogPlugin, b: CatalogPlugin) => number } = {
+    // Plugin catalog sorts a small in-memory list, not large datasets.
+    // eslint-disable-next-line @grafana/no-locale-compare
     nameAsc: (a: CatalogPlugin, b: CatalogPlugin) => a.name.localeCompare(b.name),
+    // eslint-disable-next-line @grafana/no-locale-compare
     nameDesc: (a: CatalogPlugin, b: CatalogPlugin) => b.name.localeCompare(a.name),
     updated: (a: CatalogPlugin, b: CatalogPlugin) =>
       dateTimeParse(b.updatedAt).valueOf() - dateTimeParse(a.updatedAt).valueOf(),

@@ -370,3 +370,30 @@ export const constructAbsoluteUrl = (panes: Record<string, ExploreItemState | un
     }, {});
   return urlUtil.renderUrl('/explore', { schemaVersion: 1, panes: JSON.stringify(urlStates) });
 };
+
+/** Relative path + search for saving/restoring Explore (includes orgId). */
+export const constructExploreSessionUrlToSave = (panes: Record<string, ExploreItemState | undefined>) => {
+  const pathAndSearch = constructAbsoluteUrl(panes);
+  const orgId = contextSrv.user.orgId;
+  return `${pathAndSearch}&orgId=${orgId}`;
+};
+
+/** Plain object matching Explore URL `panes` (absolute time range). */
+export const buildExplorePanesObjectForSave = (panes: Record<string, ExploreItemState | undefined>) => {
+  return Object.entries(panes)
+    .filter(isStateEntry)
+    .map(([exploreId, pane]) => {
+      const urlState = getUrlStateFromPaneState(pane);
+      urlState.range = {
+        to: pane.range.to.valueOf().toString(),
+        from: pane.range.from.valueOf().toString(),
+      };
+      return [exploreId, urlState] as const;
+    })
+    .reduce(
+      (acc, [exploreId, urlState]) => {
+        return { ...acc, [exploreId]: urlState };
+      },
+      {} as Record<string, ExploreUrlState>
+    );
+};

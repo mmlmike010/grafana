@@ -1030,6 +1030,9 @@ export const versionedPages = {
       share: {
         '12.4.0': 'data-testid explore-toolbar-share-button',
       },
+      saveSession: {
+        '12.4.0': 'data-testid explore-toolbar-save-session-button',
+      },
       copyLink: {
         '12.4.0': 'data-testid explore-toolbar-copy-link-button',
       },

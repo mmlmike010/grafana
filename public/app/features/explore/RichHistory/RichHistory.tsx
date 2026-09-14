@@ -17,6 +17,7 @@ import { selectExploreDSMaps } from '../state/selectors';
 import { RichHistoryQueriesTab } from './RichHistoryQueriesTab';
 import { RichHistorySettingsTab } from './RichHistorySettingsTab';
 import { RichHistoryStarredTab } from './RichHistoryStarredTab';
+import { SavedSessionsTab } from './SavedSessionsTab';
 
 export const getSortOrderOptions = () =>
   [
@@ -127,6 +128,13 @@ export function RichHistory(props: RichHistoryProps) {
     icon: 'star',
   };
 
+  const SavedSessionsTabConfig: TabConfig = {
+    label: t('explore.saved-sessions.tab', 'Saved sessions'),
+    value: Tabs.SavedSessions,
+    content: <SavedSessionsTab />,
+    icon: 'folder',
+  };
+
   const SettingsTab: TabConfig = {
     label: t('explore.rich-history.settings', 'Settings'),
     value: Tabs.Settings,
@@ -144,7 +152,7 @@ export function RichHistory(props: RichHistoryProps) {
     icon: 'sliders-v-alt',
   };
 
-  let tabs = [QueriesTab, StarredTab, SettingsTab];
+  let tabs = [QueriesTab, StarredTab, SavedSessionsTabConfig, SettingsTab];
   return (
     <TabbedContainer
       tabs={tabs}

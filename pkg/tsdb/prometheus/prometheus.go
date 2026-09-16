@@ -43,7 +43,7 @@ func (s *Service) GetHeuristics(ctx context.Context, req promlib.HeuristicsReque
 
 func (s *Service) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult,
 	error) {
-	return s.lib.CheckHealth(ctx, req)
+	return s.checkHealth(ctx, req)
 }
 
 func (s *Service) ValidateAdmission(ctx context.Context, req *backend.AdmissionRequest) (*backend.ValidationResponse, error) {

@@ -2,7 +2,35 @@ import { VisualizationSuggestionScore, type VisualizationSuggestionsSupplier } f
 import { type GraphFieldConfig } from '@grafana/ui';
 import { getGeometryField, getDefaultLocationMatchers } from 'app/features/geo/utils/location';
 
+import { defaultMarkersConfig } from './layers/data/markersLayer';
 import { type Options } from './panelcfg.gen';
+
+/**
+ * GeomapPanel injects defaultMarkersConfig (showLegend: true) when layers is missing.
+ * Suggestion cards ship empty options, so previewModifier must provide a layer with
+ * the legend already off — mutating a missing layers array is a no-op.
+ */
+export function applyPreviewLayerLegendDefaults(options: Partial<Options>) {
+  if (!options.layers?.length) {
+    options.layers = [
+      {
+        ...defaultMarkersConfig,
+        config: {
+          ...defaultMarkersConfig.config,
+          showLegend: false,
+        },
+      },
+    ];
+    return;
+  }
+
+  for (const layer of options.layers) {
+    layer.config = {
+      ...(layer.config ?? {}),
+      showLegend: false,
+    };
+  }
+}
 
 export const geomapSuggestionsSupplier: VisualizationSuggestionsSupplier<Options, GraphFieldConfig> = (dataSummary) => {
   if (!dataSummary.hasData || !dataSummary.rawFrames) {
@@ -26,17 +54,14 @@ export const geomapSuggestionsSupplier: VisualizationSuggestionsSupplier<Options
       },
       cardOptions: {
         previewModifier: (s) => {
-          s.options!.controls = {
+          s.options ??= {};
+          s.options.controls = {
             showZoom: false,
             showScale: false,
             showAttribution: false,
             showMeasure: false,
           };
-          // FIXME: this doesn't work. I want to disable legends in the preview.
-          s.options?.layers?.forEach((layer) => {
-            layer.config = layer.config || {};
-            layer.config.showLegend = false;
-          });
+          applyPreviewLayerLegendDefaults(s.options);
         },
       },
     },

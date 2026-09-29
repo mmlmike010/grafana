@@ -98,6 +98,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     description,
     version,
     orgName,
+    orgUrl,
     popularity,
     downloads,
     typeCode,
@@ -128,6 +129,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     },
     name,
     orgName,
+    orgUrl,
     popularity,
     publishedAt,
     signature: getPluginSignature({ remote: plugin, error }),
@@ -186,6 +188,7 @@ export function mapLocalToCatalog(plugin: LocalPlugin, error?: PluginError): Cat
     info: { logos, keywords },
     name,
     orgName: author.name,
+    orgUrl: author.url,
     popularity: 0,
     publishedAt: '',
     signature: getPluginSignature({ local: plugin, error }),
@@ -261,6 +264,7 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     name: remote?.name || local?.name || '',
     // TODO<check if we would like to keep preferring the remote version>
     orgName: remote?.orgName || local?.info.author.name || '',
+    orgUrl: remote?.orgUrl || local?.info.author.url,
     popularity: remote?.popularity || 0,
     publishedAt: remote?.createdAt || '',
     type,
@@ -360,6 +364,98 @@ export function getLatestCompatibleVersion(versions: Version[] | undefined): Ver
   const [latest] = versions.filter((v) => Boolean(v.isCompatible));
 
   return latest;
+}
+
+export type InstallReadinessStatus = 'ready' | 'warning' | 'blocked';
+
+export type InstallReadinessBlockerReason =
+  | 'incompatible'
+  | 'unsigned'
+  | 'invalid-signature'
+  | 'modified-signature'
+  | 'unpublished'
+  | 'enterprise'
+  | 'renderer'
+  | 'dev'
+  | 'remote-unavailable'
+  | 'no-permission';
+
+export type InstallReadiness = {
+  status: InstallReadinessStatus;
+  blockerReason?: InstallReadinessBlockerReason;
+  compatibleVersion?: string;
+  grafanaDependency?: string;
+  signature: PluginSignatureStatus;
+  changelogAvailable: boolean;
+  maintainerName?: string;
+  maintainerUrl?: string;
+};
+
+export function getInstallReadiness(
+  plugin: CatalogPlugin,
+  isRemotePluginsAvailable: boolean,
+  latestCompatibleVersion?: Version
+): InstallReadiness {
+  const grafanaDependency =
+    latestCompatibleVersion?.grafanaDependency ||
+    plugin.details?.grafanaDependency ||
+    plugin.details?.versions?.[0]?.grafanaDependency ||
+    undefined;
+  const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
+  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
+  const isCompatible = Boolean(latestCompatibleVersion);
+
+  const base: InstallReadiness = {
+    status: 'ready',
+    compatibleVersion: latestCompatibleVersion?.version,
+    grafanaDependency: grafanaDependency || undefined,
+    signature: plugin.signature,
+    changelogAvailable: Boolean(plugin.details?.changelog),
+    maintainerName: plugin.orgName || undefined,
+    maintainerUrl: plugin.orgUrl || plugin.url || undefined,
+  };
+
+  if (plugin.type === PluginType.renderer) {
+    return { ...base, status: 'blocked', blockerReason: 'renderer' };
+  }
+
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) {
+    return { ...base, status: 'blocked', blockerReason: 'enterprise' };
+  }
+
+  if (!plugin.isPublished) {
+    return { ...base, status: 'blocked', blockerReason: 'unpublished' };
+  }
+
+  if (!isCompatible) {
+    return { ...base, status: 'blocked', blockerReason: 'incompatible' };
+  }
+
+  if (plugin.signature === PluginSignatureStatus.invalid || plugin.error === PluginErrorCode.invalidSignature) {
+    return { ...base, status: 'blocked', blockerReason: 'invalid-signature' };
+  }
+
+  if (plugin.signature === PluginSignatureStatus.modified || plugin.error === PluginErrorCode.modifiedSignature) {
+    return { ...base, status: 'blocked', blockerReason: 'modified-signature' };
+  }
+
+  if (!isRemotePluginsAvailable) {
+    return { ...base, status: 'blocked', blockerReason: 'remote-unavailable' };
+  }
+
+  if (!hasPermission && !isExternallyManaged) {
+    return { ...base, status: 'blocked', blockerReason: 'no-permission' };
+  }
+
+  if (plugin.signature === PluginSignatureStatus.missing || plugin.error === PluginErrorCode.missingSignature) {
+    return { ...base, status: 'warning', blockerReason: 'unsigned' };
+  }
+
+  if (plugin.isDev) {
+    return { ...base, status: 'warning', blockerReason: 'dev' };
+  }
+
+  return base;
 }
 
 export const isInstallControlsEnabled = () => config.pluginAdminEnabled;

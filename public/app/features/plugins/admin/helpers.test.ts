@@ -1,6 +1,7 @@
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType, PluginType } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { setTestFlags } from '@grafana/test-utils/unstable';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import {
   mapToCatalogPlugin,
@@ -14,6 +15,7 @@ import {
   isRemotePluginVisibleByConfig,
   isNonAngularVersion,
   isDisabledAngularPlugin,
+  getInstallReadiness,
 } from './helpers';
 import { getLocalPluginMock, getRemotePluginMock, getCatalogPluginMock } from './mocks/mockHelpers';
 import {
@@ -231,6 +233,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',
@@ -399,6 +402,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0,
         publishedAt: '',
         signature: 'valid',
@@ -457,6 +461,7 @@ describe('Plugins/Helpers', () => {
         isPreinstalled: { found: false, withVersion: false },
         name: 'Zabbix',
         orgName: 'Alexander Zobnin',
+        orgUrl: 'https://github.com/alexanderzobnin',
         popularity: 0.2111,
         publishedAt: '2016-04-06T20:23:41.000Z',
         signature: 'valid',
@@ -637,6 +642,17 @@ describe('Plugins/Helpers', () => {
 
       // No local or remote
       expect(mapToCatalogPlugin()).toMatchObject({ name: '' });
+    });
+
+    test('`.orgUrl` - prefers the remote', () => {
+      expect(mapToCatalogPlugin(localPlugin, { ...remotePlugin, orgUrl: 'https://remote.example' })).toMatchObject({
+        orgUrl: 'https://remote.example',
+      });
+      expect(mapToCatalogPlugin(undefined, { ...remotePlugin, orgUrl: 'https://remote.example' })).toMatchObject({
+        orgUrl: 'https://remote.example',
+      });
+      expect(mapToCatalogPlugin(localPlugin)).toMatchObject({ orgUrl: 'https://github.com/alexanderzobnin' });
+      expect(mapToCatalogPlugin()).toMatchObject({ orgUrl: undefined });
     });
 
     test('`.orgName` - prefers the remote', () => {
@@ -1073,6 +1089,120 @@ describe('Plugins/Helpers', () => {
     it('should return false for plugins that are not disabled', () => {
       const plugin = { isDisabled: false, error: undefined } as CatalogPlugin;
       expect(isDisabledAngularPlugin(plugin)).toBe(false);
+    });
+  });
+
+  describe('getInstallReadiness()', () => {
+    const compatibleVersion: Version = {
+      version: '2.1.0',
+      createdAt: '',
+      isCompatible: true,
+      grafanaDependency: '>=10.0.0',
+    };
+
+    beforeEach(() => {
+      jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
+      config.pluginAdminExternalManageEnabled = false;
+      config.licenseInfo.enabledFeatures = { 'enterprise.plugins': true };
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      config.licenseInfo.enabledFeatures = {};
+      config.pluginAdminExternalManageEnabled = false;
+    });
+
+    it('returns ready for a signed compatible plugin', () => {
+      const plugin = getCatalogPluginMock({
+        orgUrl: 'https://example.com/org',
+        details: { ...getCatalogPluginMock().details, changelog: 'notes', grafanaDependency: '>=10.0.0' },
+      });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toEqual({
+        status: 'ready',
+        compatibleVersion: '2.1.0',
+        grafanaDependency: '>=10.0.0',
+        signature: PluginSignatureStatus.valid,
+        changelogAvailable: true,
+        maintainerName: plugin.orgName,
+        maintainerUrl: 'https://example.com/org',
+      });
+    });
+
+    it('blocks incompatible plugins and keeps the Grafana dependency range', () => {
+      const plugin = getCatalogPluginMock({
+        details: { ...getCatalogPluginMock().details, grafanaDependency: '>=12.0.0' },
+      });
+
+      expect(getInstallReadiness(plugin, true, undefined)).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'incompatible',
+        grafanaDependency: '>=12.0.0',
+      });
+    });
+
+    it('warns on unsigned plugins', () => {
+      const plugin = getCatalogPluginMock({ signature: PluginSignatureStatus.missing });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'warning',
+        blockerReason: 'unsigned',
+        signature: PluginSignatureStatus.missing,
+      });
+    });
+
+    it('blocks invalid signatures', () => {
+      const plugin = getCatalogPluginMock({ signature: PluginSignatureStatus.invalid });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'invalid-signature',
+      });
+    });
+
+    it('blocks modified signatures', () => {
+      const plugin = getCatalogPluginMock({ signature: PluginSignatureStatus.modified });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'modified-signature',
+      });
+    });
+
+    it('blocks unpublished plugins', () => {
+      const plugin = getCatalogPluginMock({ isPublished: false });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'unpublished',
+      });
+    });
+
+    it('blocks enterprise plugins without a license', () => {
+      config.licenseInfo.enabledFeatures = {};
+      const plugin = getCatalogPluginMock({ isEnterprise: true });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'enterprise',
+      });
+    });
+
+    it('blocks renderer plugins', () => {
+      const plugin = getCatalogPluginMock({ type: PluginType.renderer });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion)).toMatchObject({
+        status: 'blocked',
+        blockerReason: 'renderer',
+      });
+    });
+
+    it('falls back to plugin.url for maintainer links', () => {
+      const plugin = getCatalogPluginMock({ orgUrl: undefined, url: 'https://github.com/example/plugin' });
+
+      expect(getInstallReadiness(plugin, true, compatibleVersion).maintainerUrl).toBe(
+        'https://github.com/example/plugin'
+      );
     });
   });
 });

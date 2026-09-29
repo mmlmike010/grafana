@@ -1,5 +1,6 @@
 import { css } from '@emotion/css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom-v5-compat';
 
 import { type GrafanaTheme2, PluginErrorCode } from '@grafana/data';
 import { Trans } from '@grafana/i18n';
@@ -8,6 +9,7 @@ import { Icon, Stack, useStyles2 } from '@grafana/ui';
 import { GetStartedWithPlugin } from '../components/GetStartedWithPlugin/GetStartedWithPlugin';
 import { InstallControlsButton } from '../components/InstallControls/InstallControlsButton';
 import {
+  getInstallReadiness,
   getLatestCompatibleVersion,
   hasInstallControlWarning,
   isDisabledAngularPlugin,
@@ -15,7 +17,10 @@ import {
   isNonAngularVersion,
 } from '../helpers';
 import { useIsRemotePluginsAvailable } from '../state/hooks';
+import { trackPluginInstallDeflected } from '../tracking';
 import { type CatalogPlugin, PluginStatus, type Version } from '../types';
+
+import { InstallReadinessIndicator } from './InstallReadinessIndicator';
 
 interface Props {
   plugin?: CatalogPlugin;
@@ -23,29 +28,59 @@ interface Props {
 
 export const PluginActions = ({ plugin }: Props) => {
   const styles = useStyles2(getStyles);
+  const location = useLocation();
   const isRemotePluginsAvailable = useIsRemotePluginsAvailable();
   const latestCompatibleVersion = getLatestCompatibleVersion(plugin?.details?.versions);
   const [needReload, setNeedReload] = useState(false);
+  const isInstallControlsDisabled = plugin ? getInstallControlsDisabled(plugin, latestCompatibleVersion) : true;
+  const readiness =
+    plugin && !plugin.angularDetected
+      ? getInstallReadiness(plugin, isRemotePluginsAvailable, latestCompatibleVersion)
+      : undefined;
 
-  if (!plugin || plugin.angularDetected) {
+  const pluginId = plugin?.id;
+  const pluginType = plugin?.type;
+  const readinessStatus = readiness?.status;
+  const blockerReason = readiness?.blockerReason;
+
+  useEffect(() => {
+    if (!pluginId || !readinessStatus || isInstallControlsDisabled) {
+      return;
+    }
+    if (readinessStatus === 'ready' || !blockerReason) {
+      return;
+    }
+
+    trackPluginInstallDeflected({
+      plugin_id: pluginId,
+      plugin_type: pluginType,
+      path: location.pathname,
+      blocker_reason: blockerReason,
+      status: readinessStatus,
+    });
+  }, [pluginId, pluginType, location.pathname, readinessStatus, blockerReason, isInstallControlsDisabled]);
+
+  if (!plugin || plugin.angularDetected || !readiness) {
     return null;
   }
 
   const hasInstallWarning = hasInstallControlWarning(plugin, isRemotePluginsAvailable, latestCompatibleVersion);
   const pluginStatus = getPluginStatus(plugin, latestCompatibleVersion);
-  const isInstallControlsDisabled = getInstallControlsDisabled(plugin, latestCompatibleVersion);
 
   return (
     <Stack direction="column">
       <Stack alignItems="center">
         {!isInstallControlsDisabled && (
-          <InstallControlsButton
-            plugin={plugin}
-            latestCompatibleVersion={latestCompatibleVersion}
-            pluginStatus={pluginStatus}
-            setNeedReload={setNeedReload}
-            hasInstallWarning={hasInstallWarning}
-          />
+          <>
+            <InstallReadinessIndicator readiness={readiness} />
+            <InstallControlsButton
+              plugin={plugin}
+              latestCompatibleVersion={latestCompatibleVersion}
+              pluginStatus={pluginStatus}
+              setNeedReload={setNeedReload}
+              hasInstallWarning={hasInstallWarning}
+            />
+          </>
         )}
         <GetStartedWithPlugin plugin={plugin} />
       </Stack>

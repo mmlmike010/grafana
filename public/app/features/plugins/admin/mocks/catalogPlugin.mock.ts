@@ -24,6 +24,7 @@ export default {
   latestVersion: '4.2.2',
   name: 'Zabbix',
   orgName: 'Alexander Zobnin',
+  orgUrl: 'https://github.com/alexanderzobnin',
   popularity: 0.2093,
   publishedAt: '2016-04-06T20:23:41.000Z',
   type: 'app',

@@ -1,10 +1,12 @@
 import { render, screen } from 'test/test-utils';
 
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType } from '@grafana/data';
+import { contextSrv } from 'app/core/services/context_srv';
 
 import * as helpers from '../helpers';
 import * as hooks from '../state/hooks';
 import { initialState } from '../state/reducer';
+import * as tracking from '../tracking';
 import { type CatalogPlugin, PluginStatus, type ReducerState, type Version } from '../types';
 
 import { getInstallControlsDisabled, getPluginStatus, PluginActions } from './PluginActions';
@@ -17,6 +19,8 @@ describe('PluginActions', () => {
     jest.spyOn(helpers, 'isInstallControlsEnabled').mockReturnValue(true);
     jest.spyOn(helpers, 'hasInstallControlWarning').mockReturnValue(false);
     jest.spyOn(hooks, 'useIsRemotePluginsAvailable').mockReturnValue(true);
+    jest.spyOn(tracking, 'trackPluginInstallDeflected').mockImplementation(() => {});
+    jest.spyOn(contextSrv, 'hasPermission').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -33,7 +37,49 @@ describe('PluginActions', () => {
     it('should render install button for non-installed plugin', () => {
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
-      expect(screen.getByRole('button', { name: /install/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Install' })).toBeInTheDocument();
+    });
+
+    it('should render install readiness immediately left of the install button', () => {
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      const readiness = screen.getByTestId('plugin-install-readiness');
+      const install = screen.getByRole('button', { name: 'Install' });
+      expect(readiness).toBeInTheDocument();
+      expect(readiness.compareDocumentPosition(install) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(screen.getByText('Ready')).toBeInTheDocument();
+      expect(tracking.trackPluginInstallDeflected).not.toHaveBeenCalled();
+    });
+
+    it('should render a warning readiness state for unsigned plugins', () => {
+      render(<PluginActions plugin={createPluginStub({ signature: PluginSignatureStatus.missing })} />, {
+        preloadedState: { plugins },
+      });
+
+      expect(screen.getByTestId('plugin-install-readiness')).toBeInTheDocument();
+      expect(screen.getByText('Unsigned')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Install' })).toBeInTheDocument();
+      expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledWith(
+        expect.objectContaining({
+          plugin_id: 'test-plugin',
+          blocker_reason: 'unsigned',
+          status: 'warning',
+        })
+      );
+    });
+
+    it('should render a blocked readiness state for incompatible plugins', () => {
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(undefined);
+      render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(screen.getByText('Incompatible')).toBeInTheDocument();
+      expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledWith(
+        expect.objectContaining({
+          plugin_id: 'test-plugin',
+          blocker_reason: 'incompatible',
+          status: 'blocked',
+        })
+      );
     });
 
     it('should render uninstall button for installed plugin', () => {
@@ -56,28 +102,29 @@ describe('PluginActions', () => {
       const corePlugin = createPluginStub({ isCore: true });
       render(<PluginActions plugin={corePlugin} />, { preloadedState: { plugins } });
 
-      expect(screen.queryByRole('button', { name: /install|uninstall|update/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^(install|uninstall|update)$/i })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('plugin-install-readiness')).not.toBeInTheDocument();
     });
 
     it('should not render install controls for disabled plugins', () => {
       const disabledPlugin = createPluginStub({ isDisabled: true });
       render(<PluginActions plugin={disabledPlugin} />, { preloadedState: { plugins } });
 
-      expect(screen.queryByRole('button', { name: /install|uninstall|update/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^(install|uninstall|update)$/i })).not.toBeInTheDocument();
     });
 
     it('should not render install controls for provisioned plugins', () => {
       const provisionedPlugin = createPluginStub({ isProvisioned: true });
       render(<PluginActions plugin={provisionedPlugin} />, { preloadedState: { plugins } });
 
-      expect(screen.queryByRole('button', { name: /install|uninstall|update/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^(install|uninstall|update)$/i })).not.toBeInTheDocument();
     });
 
     it('should not render install controls when install controls are disabled', () => {
       jest.spyOn(helpers, 'isInstallControlsEnabled').mockReturnValue(false);
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
-      expect(screen.queryByRole('button', { name: /install|uninstall|update/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^(install|uninstall|update)$/i })).not.toBeInTheDocument();
     });
 
     it('should render install controls when there is an installed disabled angular plugin with a non-angular version available', async () => {
@@ -103,7 +150,7 @@ describe('PluginActions', () => {
       });
       render(<PluginActions plugin={disabledAngularPlugin} />, { preloadedState: { plugins } });
 
-      expect(screen.queryByRole('button', { name: /install|uninstall|update/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^(install|uninstall|update)$/i })).not.toBeInTheDocument();
     });
   });
 
@@ -256,9 +303,23 @@ function createPluginStub(overrides?: Partial<CatalogPlugin>): CatalogPlugin {
     downloads: 0,
     popularity: 0,
     orgName: 'Test Org',
+    orgUrl: 'https://example.com/org',
     publishedAt: '',
     updatedAt: '',
     isPublished: true,
+    details: {
+      links: [],
+      grafanaDependency: '>=10.0.0',
+      changelog: '# Changes',
+      versions: [
+        {
+          version: '1.0.0',
+          createdAt: '',
+          isCompatible: true,
+          grafanaDependency: '>=10.0.0',
+        },
+      ],
+    },
     isDev: false,
     isEnterprise: false,
     isDeprecated: false,

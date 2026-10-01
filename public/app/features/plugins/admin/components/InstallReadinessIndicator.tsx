@@ -160,11 +160,11 @@ export function InstallReadinessIndicator({ plugin, latestCompatibleVersion, isR
   const styles = useStyles2(getStyles);
   const location = useLocation();
   const readiness = getInstallReadiness(plugin, latestCompatibleVersion, isRemotePluginsAvailable);
-  const badge = STATUS_BADGE[readiness.status];
-  const label = getStatusLabel(readiness.status);
+  const { status, blockerReason } = readiness;
+  const badge = STATUS_BADGE[status];
+  const label = getStatusLabel(status);
 
   useEffect(() => {
-    const { status, blockerReason } = readiness;
     if (plugin.isInstalled || status === 'ready' || !blockerReason) {
       return;
     }
@@ -176,7 +176,7 @@ export function InstallReadinessIndicator({ plugin, latestCompatibleVersion, isR
       blocker_reason: blockerReason,
       readiness_status: status,
     });
-  }, [location.pathname, plugin.id, plugin.isInstalled, plugin.type, readiness.blockerReason, readiness.status]);
+  }, [location.pathname, plugin.id, plugin.isInstalled, plugin.type, status, blockerReason]);
 
   return (
     <Toggletip
@@ -189,7 +189,7 @@ export function InstallReadinessIndicator({ plugin, latestCompatibleVersion, isR
         type="button"
         className={styles.trigger}
         data-testid="install-readiness-indicator"
-        data-readiness-status={readiness.status}
+        data-readiness-status={status}
         aria-label={t('plugins.install-readiness.aria-label', 'Plugin readiness: {{status}}', { status: label })}
       >
         <Badge text={label} color={badge.color} icon={badge.icon} />

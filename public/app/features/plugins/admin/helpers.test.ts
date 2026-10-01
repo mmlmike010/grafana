@@ -1,7 +1,6 @@
 import { PluginErrorCode, PluginSignatureStatus, PluginSignatureType, PluginType } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { setTestFlags } from '@grafana/test-utils/unstable';
-
 import { contextSrv } from 'app/core/services/context_srv';
 
 import {

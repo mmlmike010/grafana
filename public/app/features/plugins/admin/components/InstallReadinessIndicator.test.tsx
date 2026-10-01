@@ -58,6 +58,25 @@ describe('InstallReadinessIndicator', () => {
     );
   });
 
+  it('renders a blocked badge and tracks deflection for invalid signatures', () => {
+    render(
+      <InstallReadinessIndicator
+        plugin={createPlugin({ signature: PluginSignatureStatus.invalid, isInstalled: false })}
+        latestCompatibleVersion={compatibleVersion}
+        isRemotePluginsAvailable
+      />
+    );
+
+    expect(screen.getByTestId('install-readiness-indicator')).toHaveAttribute('data-readiness-status', 'blocked');
+    expect(tracking.trackPluginInstallDeflected).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plugin_id: 'test-plugin',
+        blocker_reason: 'invalid_signature',
+        readiness_status: 'blocked',
+      })
+    );
+  });
+
   it('renders a blocked badge and tracks deflection for incompatible plugins', () => {
     render(
       <InstallReadinessIndicator
@@ -114,7 +133,10 @@ describe('InstallReadinessIndicator', () => {
       'href',
       '/plugins/test-plugin?page=changelog'
     );
-    expect(screen.getByRole('link', { name: /example org/i })).toHaveAttribute('href', 'https://example.com/maintainer');
+    expect(screen.getByRole('link', { name: /example org/i })).toHaveAttribute(
+      'href',
+      'https://example.com/maintainer'
+    );
     expect(screen.getByText(/compatible version: 1.2.3/i)).toBeInTheDocument();
     expect(screen.getByText(/signed/i)).toBeInTheDocument();
   });

@@ -164,7 +164,8 @@ export function InstallReadinessIndicator({ plugin, latestCompatibleVersion, isR
   const label = getStatusLabel(readiness.status);
 
   useEffect(() => {
-    if (plugin.isInstalled || readiness.status === 'ready' || !readiness.blockerReason) {
+    const { status, blockerReason } = readiness;
+    if (plugin.isInstalled || status === 'ready' || !blockerReason) {
       return;
     }
 
@@ -172,17 +173,10 @@ export function InstallReadinessIndicator({ plugin, latestCompatibleVersion, isR
       plugin_id: plugin.id,
       plugin_type: plugin.type,
       path: location.pathname,
-      blocker_reason: readiness.blockerReason,
-      readiness_status: readiness.status,
+      blocker_reason: blockerReason,
+      readiness_status: status,
     });
-  }, [
-    location.pathname,
-    plugin.id,
-    plugin.isInstalled,
-    plugin.type,
-    readiness.blockerReason,
-    readiness.status,
-  ]);
+  }, [location.pathname, plugin.id, plugin.isInstalled, plugin.type, readiness.blockerReason, readiness.status]);
 
   return (
     <Toggletip

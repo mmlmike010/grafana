@@ -37,7 +37,9 @@ describe('PluginActions', () => {
     });
 
     it('should render the install readiness indicator immediately left of the install button', () => {
-      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(createVersion({ grafanaDependency: '>=9.0.0' }));
+      jest
+        .spyOn(helpers, 'getLatestCompatibleVersion')
+        .mockReturnValue(createVersion({ grafanaDependency: '>=9.0.0' }));
 
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
 
@@ -52,6 +54,16 @@ describe('PluginActions', () => {
       jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(undefined);
 
       render(<PluginActions plugin={createPluginStub()} />, { preloadedState: { plugins } });
+
+      expect(screen.getByTestId('install-readiness-indicator')).toHaveAttribute('data-readiness-status', 'blocked');
+    });
+
+    it('should render a blocked readiness indicator for invalid signatures', () => {
+      jest.spyOn(helpers, 'getLatestCompatibleVersion').mockReturnValue(createVersion());
+
+      render(<PluginActions plugin={createPluginStub({ signature: PluginSignatureStatus.invalid })} />, {
+        preloadedState: { plugins },
+      });
 
       expect(screen.getByTestId('install-readiness-indicator')).toHaveAttribute('data-readiness-status', 'blocked');
     });

@@ -10,6 +10,7 @@ import {
   type CatalogPlugin,
   type InstancePlugin,
   type LocalPlugin,
+  PluginTabIds,
   PluginUpdateStrategy,
   type ProvisionedPlugin,
   type RemotePlugin,
@@ -98,6 +99,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     description,
     version,
     orgName,
+    orgUrl,
     popularity,
     downloads,
     typeCode,
@@ -128,6 +130,7 @@ export function mapRemoteToCatalog(plugin: RemotePlugin, error?: PluginError): C
     },
     name,
     orgName,
+    orgUrl,
     popularity,
     publishedAt,
     signature: getPluginSignature({ remote: plugin, error }),
@@ -186,6 +189,7 @@ export function mapLocalToCatalog(plugin: LocalPlugin, error?: PluginError): Cat
     info: { logos, keywords },
     name,
     orgName: author.name,
+    orgUrl: author.url || undefined,
     popularity: 0,
     publishedAt: '',
     signature: getPluginSignature({ local: plugin, error }),
@@ -261,6 +265,7 @@ export function mapToCatalogPlugin(local?: LocalPlugin, remote?: RemotePlugin, e
     name: remote?.name || local?.name || '',
     // TODO<check if we would like to keep preferring the remote version>
     orgName: remote?.orgName || local?.info.author.name || '',
+    orgUrl: remote?.orgUrl,
     popularity: remote?.popularity || 0,
     publishedAt: remote?.createdAt || '',
     type,
@@ -301,7 +306,10 @@ export enum Sorters {
 
 export const sortPlugins = (plugins: CatalogPlugin[], sortBy: Sorters) => {
   const sorters: { [name: string]: (a: CatalogPlugin, b: CatalogPlugin) => number } = {
+    // Plugin catalog sorts a small in-memory list, not large datasets.
+    // eslint-disable-next-line @grafana/no-locale-compare
     nameAsc: (a: CatalogPlugin, b: CatalogPlugin) => a.name.localeCompare(b.name),
+    // eslint-disable-next-line @grafana/no-locale-compare
     nameDesc: (a: CatalogPlugin, b: CatalogPlugin) => b.name.localeCompare(a.name),
     updated: (a: CatalogPlugin, b: CatalogPlugin) =>
       dateTimeParse(b.updatedAt).valueOf() - dateTimeParse(a.updatedAt).valueOf(),
@@ -382,6 +390,117 @@ export const hasInstallControlWarning = (
     !isRemotePluginsAvailable
   );
 };
+
+export type InstallReadinessStatus = 'ready' | 'warning' | 'blocked';
+
+export type InstallReadinessBlockerReason =
+  | 'incompatible'
+  | 'invalid_signature'
+  | 'modified_signature'
+  | 'unsigned'
+  | 'unpublished'
+  | 'renderer'
+  | 'enterprise'
+  | 'dev'
+  | 'no_permission'
+  | 'remote_unavailable';
+
+export type InstallReadiness = {
+  status: InstallReadinessStatus;
+  blockerReason?: InstallReadinessBlockerReason;
+  isCompatible: boolean;
+  latestCompatibleVersion?: string;
+  grafanaDependency?: string | null;
+  signature: PluginSignatureStatus;
+  changelogHref?: string;
+  maintainerHref?: string;
+  maintainerName?: string;
+};
+
+function getSignatureBlockerReason(
+  signature: PluginSignatureStatus | string
+): InstallReadinessBlockerReason | undefined {
+  switch (signature) {
+    case PluginSignatureStatus.invalid:
+      return 'invalid_signature';
+    case PluginSignatureStatus.modified:
+      return 'modified_signature';
+    case PluginSignatureStatus.missing:
+    case 'unsigned':
+      return 'unsigned';
+    default:
+      return undefined;
+  }
+}
+
+function getInstallReadinessBlocker(
+  plugin: CatalogPlugin,
+  isCompatible: boolean,
+  isRemotePluginsAvailable: boolean
+): { status: InstallReadinessStatus; blockerReason?: InstallReadinessBlockerReason } {
+  const isExternallyManaged = config.pluginAdminExternalManageEnabled;
+  const hasPermission = contextSrv.hasPermission(AccessControlAction.PluginsInstall);
+  const signatureReason = getSignatureBlockerReason(plugin.signature);
+
+  if (plugin.type === PluginType.renderer) {
+    return { status: 'blocked', blockerReason: 'renderer' };
+  }
+
+  if (!isCompatible) {
+    return { status: 'blocked', blockerReason: 'incompatible' };
+  }
+
+  if (signatureReason === 'invalid_signature' || signatureReason === 'modified_signature') {
+    return { status: 'blocked', blockerReason: signatureReason };
+  }
+
+  if (signatureReason === 'unsigned') {
+    return { status: 'warning', blockerReason: 'unsigned' };
+  }
+
+  if (!plugin.isPublished) {
+    return { status: 'warning', blockerReason: 'unpublished' };
+  }
+
+  if (plugin.isEnterprise && !featureEnabled('enterprise.plugins')) {
+    return { status: 'warning', blockerReason: 'enterprise' };
+  }
+
+  if (plugin.isDev) {
+    return { status: 'warning', blockerReason: 'dev' };
+  }
+
+  if (!hasPermission && !isExternallyManaged) {
+    return { status: 'warning', blockerReason: 'no_permission' };
+  }
+
+  if (!isRemotePluginsAvailable) {
+    return { status: 'warning', blockerReason: 'remote_unavailable' };
+  }
+
+  return { status: 'ready' };
+}
+
+export function getInstallReadiness(
+  plugin: CatalogPlugin,
+  latestCompatibleVersion?: Version,
+  isRemotePluginsAvailable = true
+): InstallReadiness {
+  const isCompatible = Boolean(latestCompatibleVersion);
+  const { status, blockerReason } = getInstallReadinessBlocker(plugin, isCompatible, isRemotePluginsAvailable);
+
+  return {
+    status,
+    blockerReason,
+    isCompatible,
+    latestCompatibleVersion: latestCompatibleVersion?.version,
+    grafanaDependency: latestCompatibleVersion?.grafanaDependency ?? plugin.details?.grafanaDependency,
+    signature: plugin.signature,
+    changelogHref: plugin.details?.changelog ? `/plugins/${plugin.id}?page=${PluginTabIds.CHANGELOG}` : undefined,
+    maintainerHref: plugin.orgUrl || plugin.url || undefined,
+    maintainerName: plugin.orgName || undefined,
+  };
+}
 
 export const isLocalPluginVisibleByConfig = (p: LocalPlugin) => isNotHiddenByConfig(p.id);
 

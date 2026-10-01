@@ -16,3 +16,12 @@ export const trackPluginInstalled = (props: PluginTrackingProps) => {
 export const trackPluginUninstalled = (props: PluginTrackingProps) => {
   reportInteraction('grafana_plugin_uninstall_clicked', props);
 };
+
+export type PluginInstallDeflectedProps = PluginTrackingProps & {
+  blocker_reason: string;
+  readiness_status: 'warning' | 'blocked';
+};
+
+export const trackPluginInstallDeflected = (props: PluginInstallDeflectedProps) => {
+  reportInteraction('grafana_plugin_install_deflected', props);
+};

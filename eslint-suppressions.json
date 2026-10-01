@@ -2516,11 +2516,6 @@
       "count": 1
     }
   },
-  "public/app/features/plugins/admin/helpers.ts": {
-    "@grafana/no-locale-compare": {
-      "count": 2
-    }
-  },
   "public/app/features/plugins/admin/pages/Browse.tsx": {
     "@grafana/require-no-margin": {
       "count": 4

@@ -96,7 +96,7 @@ Main honors `grafana-desktop://retry` from both `failed` (either reason) and `po
 ### `failed`, `reason=timeout`
 
 - Page title and headline: **Grafana took too long to start**
-- Message: Grafana didn't finish starting. Try again, or check the logs folder for details.
+- Message: It may still be setting up the database. Try again, or check the logs folder for details.
 - Logs folder: `<logs>`
 - Details line: grafana-server didn't report ready before the startup time limit.
 - Last output (optional, from `detail`): the last stdout line, in monospace.

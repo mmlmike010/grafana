@@ -76,3 +76,79 @@ jobs:
         env:
           # Root tsc + Nx package graphs are memory-heavy; default heap can OOM on ubuntu-latest.
           NODE_OPTIONS: --max-old-space-size=6144
+
+  # Always runs (no `paths:` filter) so the check always reports. It also hosts the two repo-level guards, which must
+  # run on PRs that never touch desktop/ (e.g. a pkg/ change adding a /desktop route, or a root workspace edit).
+  desktop-changes:
+    name: Desktop changes and repo boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      desktop: ${{ steps.detect.outputs.desktop }}
+    steps:
+      # On pull_request HEAD is the merge commit, so HEAD^1 is the base and HEAD^1...HEAD is exactly the PR diff.
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - name: Detect desktop changes
+        id: detect
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "desktop=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only HEAD^1...HEAD)"
+          if grep -qE '^(desktop/|\.github/workflows/fieldsphere-ci\.yml$|package\.json$|yarn\.lock$|\.yarnrc\.yml$|eslint\.config\.js$)' <<<"$changed"; then
+            echo "desktop=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "desktop=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Root install does not include desktop/ or electron (CUR-27)
+        run: |
+          set -euo pipefail
+          node -e '
+            const pkg = require("./package.json");
+            const ws = Array.isArray(pkg.workspaces) ? pkg.workspaces : (pkg.workspaces?.packages ?? []);
+            const badWs = ws.filter((w) => /^(\.\/)?(desktop|\*)(\/|$)/.test(w));
+            const deps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.optionalDependencies };
+            const badDeps = Object.keys(deps).filter((d) => d === "electron" || d.startsWith("electron-builder") || d.startsWith("@electron/") || d === "@grafana/desktop");
+            if (badWs.length || badDeps.length) {
+              console.error("Root package.json must not include desktop/ or electron:", { workspaces: badWs, dependencies: badDeps });
+              process.exit(1);
+            }
+          '
+          # electron-to-chromium (browserslist data) is legitimately in the root lockfile; electron itself is not.
+          if grep -nE '^"?(electron|electron-builder|@electron/[^@"]+|@grafana/desktop)@|@workspace:desktop' yarn.lock; then
+            echo "Root yarn.lock must not reference desktop/ or electron" >&2
+            exit 1
+          fi
+      - name: No desktop surface in pkg/ (CUR-39)
+        if: github.event_name == 'pull_request'
+        env:
+          ANY_PKG_CHANGE: ${{ contains(github.event.pull_request.labels.*.name, 'desktop') && '--any-pkg-change' || '' }}
+        run: desktop/scripts/check-no-pkg-desktop.sh $ANY_PKG_CHANGE HEAD^1 HEAD
+
+  desktop:
+    name: Desktop lint, typecheck and test
+    needs: desktop-changes
+    if: needs.desktop-changes.outputs.desktop == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      # desktop/ has no .nvmrc or engines field, so it uses the root .nvmrc.
+      - uses: ./.github/actions/setup-node
+      # Independent Yarn project with its own desktop/yarn.lock; the root install is deliberately not used.
+      - run: yarn --cwd desktop install --immutable
+      - name: Lint (desktop ESLint config + preload import allowlist)
+        run: yarn --cwd desktop lint
+      - name: Typecheck (main and preload tsconfigs)
+        run: yarn --cwd desktop typecheck
+      - name: Test (desktop guard fixtures)
+        run: yarn --cwd desktop test
+      - name: Build (enforces the preload size budget)
+        run: yarn --cwd desktop build

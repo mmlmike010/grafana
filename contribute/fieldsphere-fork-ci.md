@@ -8,6 +8,9 @@ This repository fork uses a **minimal GitHub Actions workflow** ([`.github/workf
 
 - **Backend:** Four **parallel** shards (`./scripts/ci/backend-tests/shard.sh -N1/4` … `-N4/4`), each running `CGO_ENABLED=0 go test -short` on its package subset (~quarter of the tree), so wall time is roughly the slowest shard instead of one long `./...` run. A final job **Backend unit tests (short)** fails the workflow if any shard fails (single check name for branch protection).
 - **Frontend:** `yarn run prettier:check`, `yarn run lint`, then `yarn workspace @grafana/data themes-schema` (generates `schema.generated.json`, which is gitignored but required by `tsc`), then `yarn run typecheck`. Typecheck uses `NODE_OPTIONS=--max-old-space-size=6144` so `tsc` / Nx do not hit the default heap limit on standard runners.
+- **Desktop:** two jobs gate the Electron shell in [`desktop/`](../desktop/README.md).
+  - **Desktop changes and repo boundary** always runs, so it always reports on PRs (no `paths:` filter). It diffs the PR's merge commit against its base (`HEAD^1...HEAD`) and sets `desktop=true` when the PR touches `desktop/**`, `fieldsphere-ci.yml`, or the root `package.json`, `yarn.lock`, `.yarnrc.yml`, or `eslint.config.js`; pushes always set it. It also runs the two repo-level guards, which must apply even to PRs that never touch `desktop/`: the install isolation check (CUR-27: root `package.json` workspaces/dependencies and root `yarn.lock` must not reference `desktop/` or `electron`) and `desktop/scripts/check-no-pkg-desktop.sh` (CUR-39: no desktop/Electron surface under `pkg/`; with `--any-pkg-change` when the PR has the `desktop` label).
+  - **Desktop lint, typecheck and test** runs only when `desktop=true`. It uses the root `.nvmrc` (desktop has none of its own), installs with `yarn --cwd desktop install --immutable` against `desktop/yarn.lock` (never the root install), then runs the desktop package's `lint` (its own Node-env ESLint config plus the preload import allowlist), `typecheck` (main and preload tsconfigs), `test`, and `build` (enforces the preload size budget). The root ESLint config ignores `desktop/`, so `yarn run lint` in the frontend job never lints Electron main/preload.
 
 **Build Go (matrix)** is a no-op stub on this fork ([`.github/workflows/build-go-matrix.yml`](../.github/workflows/build-go-matrix.yml)); the full upstream workflow is in [`.github/workflows-upstream-archive/build-go-matrix.yml`](../.github/workflows-upstream-archive/build-go-matrix.yml). Upstream used Grafana org runners that are unavailable here and would fail every PR.
 
@@ -51,6 +54,9 @@ After this workflow is on your default branch:
 3. Add required checks that match **Fieldsphere CI** job names in GitHub’s picker, for example:
    - `Backend unit tests (short)`
    - `Frontend lint and typecheck`
+   - `Desktop changes and repo boundary`
+
+   - `Desktop lint, typecheck and test` (a skipped job satisfies a required check, so non-desktop PRs are not blocked)
 
 Names must match what the Actions UI shows for the workflow run (they use the `name:` field on each job).
 

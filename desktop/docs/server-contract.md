@@ -1,6 +1,8 @@
 # Grafana Desktop: server spawn and health contract
 
-Status: **proposal for sign-off** (CUR-28). Owner: Full Stack. Consumers: server process manager, startup/failure states page, theme sync spec, smoke definition, CI-4.
+Status: **signed off by Electron and Eng Manager** (CUR-28), except the product questions in [Pending Eng Manager decisions](#pending-eng-manager-decisions). Owner: Full Stack. Consumers: server process manager, startup/failure states page, theme sync spec, smoke definition, CI-4.
+
+Typed constants for this contract (port, origin, timeouts, log markers, theme link patterns) will live at `desktop/src/shared/server-contract.ts`, inside Electron's scaffold branch (CUR-36). If that file and this doc disagree, this doc wins until the constants are updated.
 
 This is the contract between Electron main and the bundled Grafana server. Electron main spawns the server as a child process and loads the SPA in a thin `BrowserWindow` at exactly `http://127.0.0.1:23300`. All configuration uses existing `GF_*` env vars or a generated `custom.ini`. **No `pkg/` changes are needed** (see [No `pkg/` changes](#no-pkg-changes)).
 
@@ -8,24 +10,25 @@ Source links point at `main`. Line numbers were verified at commit `e7b95c6dd5`.
 
 ## 1. Locked decisions
 
-These are already decided. This document records them and doesn't reopen them.
+These are decided. This document records them and doesn't reopen them.
 
-| Area       | Decision                                                                                                                                                                  |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Config     | `GF_*` env vars or a generated `custom.ini` under `app.getPath('userData')`. No `pkg/` changes.                                                                           |
-| Bind       | `127.0.0.1` only. Never `localhost`, never `0.0.0.0`.                                                                                                                     |
-| Port       | One pinned port that fails loudly. **No fallback port in v1**: a different port is a different origin, which loses localStorage/IndexedDB and breaks OAuth redirect URIs. |
-| `root_url` | Exactly `http://127.0.0.1:<port>/`.                                                                                                                                       |
-| Paths      | data, logs, plugins, and provisioning live under `userData`, never under the install dir.                                                                                 |
-| Session    | Persistent Electron partition `persist:grafana`. Logout clears it when the window navigates to `/logout` (separate ticket).                                               |
-| Health     | `booting` → `ready` / `failed` / `port-in-use` (section 5).                                                                                                               |
-| Shutdown   | SIGTERM → grace → SIGKILL (tree-kill on Windows). No orphaned processes.                                                                                                  |
-| Crashes    | Always shown to the user, never silent.                                                                                                                                   |
-| Instances  | `app.requestSingleInstanceLock()`, so two copies never share one SQLite file.                                                                                             |
+| Area         | Decision                                                                                                                                                                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Config       | `GF_*` env vars or a generated `custom.ini` under `app.getPath('userData')`. No `pkg/` changes.                                                                                                                                          |
+| Bind         | `127.0.0.1` only. Never `localhost`, never `0.0.0.0`.                                                                                                                                                                                    |
+| Port         | **`23300`**, approved by Eng Manager and Electron (section 2). One pinned port that fails loudly. **No fallback port in v1**: a different port is a different origin, which loses localStorage/IndexedDB and breaks OAuth redirect URIs. |
+| `root_url`   | Exactly `http://127.0.0.1:<port>/`.                                                                                                                                                                                                      |
+| Paths        | data, logs, plugins, and provisioning live under `userData`, never under the install dir.                                                                                                                                                |
+| Session      | Persistent Electron partition `persist:grafana`. Logout clears it when the window navigates to `/logout` (separate ticket).                                                                                                              |
+| Health       | `booting` → `ready` / `failed` / `port-in-use`. The 30 s booting timer resets on migration progress, with a 120 s hard limit (section 5).                                                                                                |
+| Shutdown     | SIGTERM → grace → SIGKILL. No orphaned processes. On Windows, a hard tree-kill is accepted for v1; graceful Windows shutdown is a post-v1 follow-up (section 7).                                                                         |
+| Theme signal | The preload watches the theme stylesheet `<link>` in `<head>` and sends `'light' \| 'dark'` on the one-way channel. No `public/` change. CI-4 asserts on the link `href` (section 9).                                                    |
+| Crashes      | Always shown to the user, never silent.                                                                                                                                                                                                  |
+| Instances    | `app.requestSingleInstanceLock()`, so two copies never share one SQLite file.                                                                                                                                                            |
 
-## 2. Pinned port: `23300` (proposal)
+## 2. Pinned port: `23300` (approved)
 
-**Proposed: `23300`.** Reasons:
+**`23300`, approved by Eng Manager and Electron.** Reasons:
 
 - **Doesn't collide with the repo's own ports.** `23300` appears nowhere in the repo. The dev server uses `3000` ([`conf/defaults.ini#L50`][ini-http-port]). The devenv Grafana block maps `3001:3000` ([`devenv/docker/blocks/grafana/docker-compose.yaml#L4`][devenv-grafana]), which Playwright also uses ([`playwright.config.ts#L8`][pw-url]). Storybook e2e uses `9001` ([`package.json#L38`][storybook-port]). Webpack livereload uses `35750` ([`scripts/webpack/webpack.dev.js#L128`][livereload]). The devenv blocks use 3100, 3200, 4317/4318, 5432, 8080/8081, 9090–9112, and other common ports.
 - **Avoids common dev ports**, including 3000–3010, 4200, 5000, 5173, 6006, 8000, 8080, 8888, and 9000.
@@ -95,9 +98,10 @@ Notes:
 | Key                                                                       | Value                              | Why                                                                                                                                                                                                                                                                                |
 | ------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `[server] enforce_domain` ([L57][ini-enforce])                            | `true`                             | Redirects any request whose `Host` isn't `127.0.0.1`, which blocks DNS-rebinding attacks from web pages against the local server ([`validate_host.go#L29-L48`][validate-host]). Runs after the health handlers, so polling is unaffected ([`http_server.go#L712-L723`][mw-order]). |
-| `[analytics] reporting_enabled` ([L308][ini-reporting])                   | `false`                            | No usage stats from a desktop app without consent. Needs product sign-off.                                                                                                                                                                                                         |
+| `[analytics] reporting_enabled` ([L308][ini-reporting])                   | `false` (recommended)              | No usage stats from a desktop app without consent. **Pending Eng Manager's decision.**                                                                                                                                                                                             |
 | `[analytics] check_for_updates` ([L318][ini-check-updates])               | `false`                            | Electron owns app updates. Grafana's banner would point users at the wrong installer.                                                                                                                                                                                              |
 | `[analytics] check_for_plugin_updates` ([L325][ini-check-plugin-updates]) | `true` (keep)                      | Plugin updates are still installed in-app.                                                                                                                                                                                                                                         |
+| `[plugins] preinstall_disabled` ([L2039][ini-preinstall-disabled])        | `true` (recommended by Electron)   | By default the server downloads five plugins from grafana.com in the background on every boot ([`setting_plugins.go#L35-L42`][preinstall-defaults], [`#L144-L150`][preinstall-apply]). `true` means no grafana.com reach-out on first boot. **Pending Eng Manager's decision.**    |
 | `[security] cookie_secure` ([L424][ini-cookie-secure])                    | `false` (keep)                     | The origin is plain `http`.                                                                                                                                                                                                                                                        |
 | `[security] cookie_samesite` ([L427][ini-cookie-samesite])                | `lax` (keep)                       | The default. `none` needs `Secure`, and `strict` breaks OAuth callbacks.                                                                                                                                                                                                           |
 | `[security] secret_key` ([L394][ini-secret-key])                          | random, generated once per install | The default is a public constant used to encrypt data source secrets. Generate it on first run and **never rotate it**, because rotating makes existing secrets unreadable.                                                                                                        |
@@ -130,10 +134,11 @@ stateDiagram-v2
     preflight --> port_in_use: probe bind 127.0.0.1:23300 fails
     preflight --> booting: probe ok, spawn grafana server
     booting --> booting: ECONNREFUSED or 503
+    booting --> booting: migration progress on stdout (reset 30s timer)
     booting --> ready: saw "HTTP Server Listen" and GET /api/health 200, database ok
     booting --> port_in_use: "failed to open listener on address" before ready
     booting --> failed: exit before ready
-    booting --> failed: no ready within 30s
+    booting --> failed: 30s with no progress, or 120s since spawn
     ready --> failed: unexpected exit (crash)
     port_in_use --> preflight: Retry
     port_in_use --> [*]: Quit
@@ -142,12 +147,24 @@ stateDiagram-v2
     ready --> [*]: app quit, graceful shutdown
 ```
 
-| State         | Entry condition                                                                                                                                                                                       | Main does                                                                                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `booting`     | Pre-spawn probe passed and the child is spawned.                                                                                                                                                      | Polls `GET /api/health` about every 250 ms. Shows the splash.                                                                                             |
-| `ready`       | **All three:** the child is alive, its stdout logged `HTTP Server Listen` with `address=127.0.0.1:23300` ([`http_server.go#L486`][listen-log]), and `/api/health` returned 200 with `database: "ok"`. | Loads `http://127.0.0.1:23300/` in the window.                                                                                                            |
-| `failed`      | The child exits before `ready`, or isn't `ready` within **30 s**, or exits after `ready` (crash).                                                                                                     | Shows the failure screen with the exit code/signal, the last stdout lines, and the log path. Kills the child if it's still running. Never fails silently. |
-| `port-in-use` | The pre-spawn probe fails, or stdout contains `failed to open listener on address` before `ready`.                                                                                                    | Shows its own screen with Retry/Quit, handled in main. Doesn't spawn, or kills the child.                                                                 |
+| State         | Entry condition                                                                                                                                                                                       | Main does                                                                                                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `booting`     | Pre-spawn probe passed and the child is spawned.                                                                                                                                                      | Polls `GET /api/health` about every 250 ms. Shows the splash.                                                                                                                        |
+| `ready`       | **All three:** the child is alive, its stdout logged `HTTP Server Listen` with `address=127.0.0.1:23300` ([`http_server.go#L486`][listen-log]), and `/api/health` returned 200 with `database: "ok"`. | Loads `http://127.0.0.1:23300/` in the window.                                                                                                                                       |
+| `failed`      | The child exits before `ready`, or a booting timeout fires (see [Booting timeouts](#booting-timeouts)), or the child exits after `ready` (crash).                                                     | Shows the startup page's failure state (section 10) with the exit code/signal, the last stdout lines, and the log path. Kills the child if it's still running. Never fails silently. |
+| `port-in-use` | The pre-spawn probe fails, or stdout contains `failed to open listener on address` before `ready`.                                                                                                    | Shows the startup page's port-in-use state with Retry/Quit, handled in main (section 10). Doesn't spawn, or kills the child.                                                         |
+
+### Booting timeouts
+
+- **Idle timer: 30 s.** It starts at spawn and **resets whenever a migration progress line appears on the child's stdout**. If it expires, the state goes to `failed`.
+- **Hard limit: 120 s from spawn.** Progress lines don't extend it. When it's reached, the state goes to `failed` even if migrations are still logging.
+- **Progress lines** are the migrator's Info-level messages. Match on the message text, not the logger name, because the logger is `migrator` or `<scope>-migrator` ([`migrator.go#L107-L110`][migrator-logger]):
+  - `Starting DB migrations` ([`migrator.go#L247`][migrator-start])
+  - `Executing migration` ([`#L363`][migrator-exec])
+  - `Migration successfully executed` ([`#L403`][migrator-ok])
+  - `migrations completed` ([`#L307`][migrator-done])
+- With `[log.console] format = json` (section 3.4), these appear as the `msg` field. Info is the default level ([`conf/defaults.ini#L1187`][ini-log-level]), so they're emitted without extra config.
+- After `migrations completed`, the last 30 s window covers init provisioning and the listener opening.
 
 **Why `ready` requires the listen log line:** if another process (for example a dev Grafana) is already serving `127.0.0.1:23300`, its `/api/health` returns 200 while our child is still migrating. Without the log-line check (and the pre-spawn probe), main would declare `ready` against the wrong server.
 
@@ -166,7 +183,7 @@ Verified from source. Not run, because no server binary was built for this doc.
 ## 7. Shutdown and crashes
 
 - **POSIX:** SIGTERM → wait **10 s** → SIGKILL. Grafana handles SIGTERM/SIGINT with a graceful shutdown bounded at 30 s ([`cli.go#L148-L170`][signals]). Spawn with `detached: true` so the server and its backend plugin processes share a process group. Kill with `process.kill(-pid, sig)` so plugin children don't outlive the server.
-- **Windows:** Node can't deliver a graceful signal. `child.kill('SIGTERM')` terminates the process abruptly. Use a tree-kill (`taskkill /pid <pid> /T /F`) so plugin processes die too. See open question 4.
+- **Windows:** Node can't deliver a graceful signal. `child.kill('SIGTERM')` terminates the process abruptly. Use a tree-kill (`taskkill /pid <pid> /T /F`) so plugin processes die too. **A hard tree-kill is accepted for v1.** SQLite's default rollback journal (`[database] wal = false`, [L206][ini-wal]) survives it, but in-flight writes are lost. Graceful Windows shutdown is a post-v1 follow-up.
 - **Orphans after an Electron crash:** on the next launch, main reads the `--pidfile`. If that PID is alive and is our `grafana` binary, main tree-kills it before the probe. Otherwise the probe reports `port-in-use` against our own orphan.
 - **Crash after `ready`:** any exit that main didn't request moves to `failed` with a visible screen. There's no silent restart loop in v1.
 
@@ -175,31 +192,50 @@ Verified from source. Not run, because no server binary was built for this doc.
 - Generic and built-in OAuth connectors build the redirect URI as `strings.TrimSuffix(AppURL, "/") + "/login/" + <provider>` ([`connectors/common.go#L141`][oauth-redirect], [`social.go#L38`][social-base]). `AppURL` is `root_url` ([`setting.go#L2168-L2173`][readserver-appurl]).
 - So every IdP app must register exactly `http://127.0.0.1:23300/login/<provider>`, for example `/login/github`, `/login/google`, `/login/generic_oauth`, `/login/azuread`, `/login/okta`, or `/login/gitlab`. Use the literal IP. `localhost` is a different string, and most IdPs match exactly.
 - Changing the port or `root_url` invalidates every registered redirect URI. This is the main reason there's no fallback port.
-- Some IdPs reject plain `http` redirects to anything other than `localhost`, or only allow loopback IP redirects for "native app" client types. That's a per-provider check (open question 5).
+- Some IdPs reject plain `http` redirects to anything other than `localhost`, or only allow loopback IP redirects for "native app" client types. That's a per-provider check, pending Eng Manager's decision on which providers v1 supports.
 
-## 9. Body theme class (contract surface, guarded by CI-4)
+## 9. Theme signal (contract surface, guarded by CI-4)
 
-> **The assumption only half holds.** The classes are `theme-dark` and `theme-light`, but **the SPA never updates `<body>` on a live theme change**, and **`system` can leave both classes on `<body>`.** A `MutationObserver` on `body.className` alone **won't** see in-app theme switches.
+**Decision:** the preload watches the theme stylesheet `<link>` in `<head>`. Its `href` contains `build/grafana.dark` or `build/grafana.light`. The preload sends `'light' | 'dark'` to main on the one-way channel. **There is no `public/` change.** **CI-4 asserts on the link `href`.**
+
+- **How:** observe `<head>` child-list mutations. Resolve the mode from the last `link[href*="build/grafana.dark"]` or `link[href*="build/grafana.light"]` present, and send only when the mode changes. `changeTheme` inserts the new link at the top of `<head>` and removes the old one once the new CSS loads ([`theme.ts#L17-L36`][theme-swap]), so both links can briefly coexist. Resolving after removal settles on the new mode.
+- **Why the link is a stable surface:** `changeTheme` itself finds the old stylesheet by that substring ([`theme.ts#L27`][theme-link]), and the `system` boot path inserts a link with the same asset URLs ([`index.html#L286-L304`][index-system]).
+- **Rejected: watching the `<body>` class.** It doesn't update on a live toggle, and it can carry both classes under `system`. The findings follow.
 
 - **Server render:** [`public/views/index.html#L43`][index-body] renders `<body class="theme-[[ .ThemeType ]] [[.AppNameBodyClass]]">`. `ThemeType` is the resolved theme's `Type` ([`pkg/api/index.go#L139`][index-theme], [`#L175`][index-themetype]), which is always `dark` or `light` ([`themes_generated.go#L6-L24`][themes]). `AppNameBodyClass` is `app-grafana` ([`index.go#L188`][index-appname]).
 - **`system` theme:** `system` has `Type: "dark"` ([`themes_generated.go#L8`][themes-system]), so the server renders `theme-dark`. The inline boot script then tries to remove `theme-system`, which was never added, and adds `theme-dark` or `theme-light` based on `prefers-color-scheme` ([`index.html#L286-L304`][index-system]). **With `system` and a light OS, `<body>` ends up with both `theme-dark` and `theme-light`.** The script runs once at startup only ([`index.html#L286-L287`][index-system]).
 - **Live change:** [`changeTheme`, `public/app/core/services/theme.ts#L9-L51`][change-theme] publishes `ThemeChangedEvent` and swaps the theme stylesheet `<link>`. It **doesn't touch `document.body.classList`**. The only other body-class writer on navigation is route `pageClass` handling ([`GrafanaRoute.tsx#L94-L102`][route-classes]), which is unrelated.
-- **Signal the preload can rely on today, without code changes:** the theme stylesheet `<link>` in `<head>`. Its `href` contains `build/grafana.dark` or `build/grafana.light`. `changeTheme` itself depends on that substring to find the old link ([`theme.ts#L27`][theme-link]). Observe `<head>` child mutations and resolve the mode from the last `link[href*="build/grafana.dark"]` or `link[href*="build/grafana.light"]`, then send `'dark' | 'light'` over IPC. If the team wants `<body>` to be the contract, that needs a `public/` change (open question 1).
 
-## No `pkg/` changes
+## 10. Startup page actions
 
-Everything in sections 1–8 is achievable with existing keys, flags, and endpoints. Nothing here requires editing `pkg/`. The items that config **can't** do are listed as open questions, not code changes: graceful shutdown on Windows (4), and a live `<body>` theme class, which is a `public/` change (1).
+- **Where it lives:** the startup and failure page is bundled in `desktop/resources/startup/`. Main loads it from disk, **never from `127.0.0.1`**, so it works when the server is down and never shares the SPA's origin.
+- **No scripts** beyond reading a query param, which selects the state to show (for example `booting`, `failed`, or `port-in-use`).
+- **Controls are plain links:** Retry is `<a href="grafana-desktop://retry">`, and Quit is `<a href="grafana-desktop://quit">`.
+- **Scheme handling:** main registers the `grafana-desktop` scheme in-process, so the OS never shows an open-external-app prompt. Retry moves to `preflight` and Quit exits (section 5).
+- **Honored only on the startup page:** main acts on these two URLs only while the window is showing the bundled startup page. Once the SPA is loaded, main blocks them and does nothing. A dashboard HTML panel or any other SPA content can't quit or restart the app.
+- **IPC stays at v0.** These actions use navigation, not new IPC channels.
 
-## Open questions for sign-off
+## No `pkg/` or `public/` changes
 
-1. **Theme signal:** accept the `<head>` stylesheet-link observer (section 9), or file a small `public/` change so `changeTheme` and the `system` boot path keep exactly one of `theme-dark`/`theme-light` on `<body>`? CI-4 should guard whichever surface we pick.
-2. **Port `23300`:** approve, or pick another port in 20000–29999 that's IANA-unassigned and unused in the repo.
-3. **30 s ready timeout on first boot:** first boot runs the full migration set on SQLite, and is slower on Windows with antivirus scanning. Should someone measure it on the slowest supported machine before we lock 30 s? An alternative is to restart the timer while stdout shows migration progress (`migrations completed` is logged by [`migrator.go#L307`][migrator-done]).
-4. **Windows graceful shutdown:** there's no signal path, so shutdown is always a hard tree-kill. SQLite's default rollback journal (`[database] wal = false`, [L206][ini-wal]) survives this, but in-flight writes are lost. Is that acceptable for v1, or do we want a follow-up (for example a console-ctrl event helper)?
-5. **OAuth providers:** which IdPs must v1 support? Each needs a check that it accepts an `http://127.0.0.1:23300/login/<provider>` redirect.
-6. **Default plugin preinstall:** on boot, the server downloads five plugins from grafana.com in the background by default ([`setting_plugins.go#L35-L42`][preinstall-defaults], [`#L144-L150`][preinstall-apply]). Offline first runs log errors but still reach `ready`. Should we set `[plugins] preinstall_disabled = true` ([L2039][ini-preinstall-disabled]) and bundle the plugins instead?
-7. **Login on a single-user desktop:** keep `admin`/`admin` with the forced password change, or provision the first user in another way? This is a product decision and out of scope here.
-8. **Analytics:** confirm `reporting_enabled = false` as the desktop default.
+Everything in sections 1–10 uses existing keys, flags, endpoints, and DOM. Nothing here requires editing `pkg/` or `public/`. The one thing config can't do, graceful shutdown on Windows, is a post-v1 follow-up rather than a code change now.
+
+## Resolved at sign-off
+
+| Question                 | Resolution                                                                                                      |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Theme signal             | Preload watches the `<head>` stylesheet link; no `public/` change; CI-4 asserts on the link `href` (section 9). |
+| Pinned port              | `23300`, approved by Eng Manager and Electron (section 2).                                                      |
+| First-boot ready timeout | 30 s idle timer that resets on migration progress, with a 120 s hard limit (section 5).                         |
+| Windows shutdown         | Hard tree-kill accepted for v1; graceful Windows shutdown is a post-v1 follow-up (section 7).                   |
+
+## Pending Eng Manager decisions
+
+These are product questions. They don't block the process manager, because each one is a config value or an external setup step.
+
+1. **Plugin preinstall:** Electron recommends `[plugins] preinstall_disabled = true` ([L2039][ini-preinstall-disabled]), so there's no grafana.com reach-out on first boot (section 3.4). Offline first runs reach `ready` either way; with preinstall on, they log download errors.
+2. **Identity providers:** which IdPs v1 supports, and whether each accepts an `http://127.0.0.1:23300/login/<provider>` redirect (section 8).
+3. **First login on a single-user desktop:** keep `admin`/`admin` with the forced password change, or provision the first user another way.
+4. **Analytics:** confirm `[analytics] reporting_enabled = false` as the desktop default (section 3.4).
 
 [ini]: https://github.com/mmlmike010/grafana/blob/main/conf/defaults.ini
 [ini-data]: https://github.com/mmlmike010/grafana/blob/main/conf/defaults.ini#L17
@@ -221,6 +257,7 @@ Everything in sections 1–8 is achievable with existing keys, flags, and endpoi
 [ini-cookie-samesite]: https://github.com/mmlmike010/grafana/blob/main/conf/defaults.ini#L427
 [ini-hide-version]: https://github.com/mmlmike010/grafana/blob/main/conf/defaults.ini#L732
 [ini-log-mode]: https://github.com/mmlmike010/grafana/blob/main/conf/defaults.ini#L1184
+[ini-log-level]: https://github.com/mmlmike010/grafana/blob/main/conf/defaults.ini#L1187
 [ini-console-format]: https://github.com/mmlmike010/grafana/blob/main/conf/defaults.ini#L1200
 [ini-preinstall-disabled]: https://github.com/mmlmike010/grafana/blob/main/conf/defaults.ini#L2039
 [conf-prov]: https://github.com/mmlmike010/grafana/tree/main/conf/provisioning
@@ -249,7 +286,11 @@ Everything in sections 1–8 is achievable with existing keys, flags, and endpoi
 [pidfile]: https://github.com/mmlmike010/grafana/blob/main/pkg/server/server.go#L123
 [server-run]: https://github.com/mmlmike010/grafana/blob/main/pkg/server/server.go#L141-L150
 [migrate]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/sqlstore/sqlstore.go#L71
+[migrator-logger]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/sqlstore/migrator/migrator.go#L107-L110
+[migrator-start]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/sqlstore/migrator/migrator.go#L247
 [migrator-done]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/sqlstore/migrator/migrator.go#L307
+[migrator-exec]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/sqlstore/migrator/migrator.go#L363
+[migrator-ok]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/sqlstore/migrator/migrator.go#L403
 [joinhostport]: https://github.com/mmlmike010/grafana/blob/main/pkg/api/http_server.go#L451-L453
 [listen-log]: https://github.com/mmlmike010/grafana/blob/main/pkg/api/http_server.go#L486
 [listen-err]: https://github.com/mmlmike010/grafana/blob/main/pkg/api/http_server.go#L552-L555
@@ -274,6 +315,7 @@ Everything in sections 1–8 is achievable with existing keys, flags, and endpoi
 [themes]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/preference/themes_generated.go#L6-L24
 [themes-system]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/preference/themes_generated.go#L8
 [change-theme]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/services/theme.ts#L9-L51
+[theme-swap]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/services/theme.ts#L17-L36
 [theme-link]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/services/theme.ts#L27
 [route-classes]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/navigation/GrafanaRoute.tsx#L94-L102
 [devenv-grafana]: https://github.com/mmlmike010/grafana/blob/main/devenv/docker/blocks/grafana/docker-compose.yaml#L4

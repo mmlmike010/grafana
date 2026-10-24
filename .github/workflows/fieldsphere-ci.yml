@@ -124,6 +124,21 @@ jobs:
             echo "Root yarn.lock must not reference desktop/ or electron" >&2
             exit 1
           fi
+      - name: Desktop PRs do not touch root package.json or yarn.lock (CUR-27)
+        if: github.event_name == 'pull_request'
+        env:
+          DESKTOP_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'desktop') }}
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only HEAD^1...HEAD)"
+          if [ "$DESKTOP_LABEL" != "true" ] && ! grep -q '^desktop/' <<<"$changed"; then
+            echo "Not a desktop PR"
+            exit 0
+          fi
+          if grep -xE 'package\.json|yarn\.lock' <<<"$changed"; then
+            echo "Desktop PRs must not change the root package.json or yarn.lock; desktop deps belong in desktop/package.json and desktop/yarn.lock" >&2
+            exit 1
+          fi
       - name: No desktop surface in pkg/ (CUR-39)
         if: github.event_name == 'pull_request'
         env:
@@ -142,6 +157,14 @@ jobs:
           persist-credentials: false
       # desktop/ has no .nvmrc or engines field, so it uses the root .nvmrc.
       - uses: ./.github/actions/setup-node
+      # Pins Yarn to desktop/package.json `packageManager` instead of relying on the runner's global Yarn 1.
+      - name: Enable Corepack and require Yarn 4
+        run: |
+          set -euo pipefail
+          corepack enable
+          version="$(yarn --cwd desktop --version)"
+          echo "yarn $version"
+          [[ "$version" == 4.* ]] || { echo "desktop needs Yarn 4, got $version" >&2; exit 1; }
       # Independent Yarn project with its own desktop/yarn.lock; the root install is deliberately not used.
       - run: yarn --cwd desktop install --immutable
       - name: Lint (desktop ESLint config + preload import allowlist)

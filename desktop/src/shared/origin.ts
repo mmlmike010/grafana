@@ -4,8 +4,8 @@
 
 export const GRAFANA_HOST = '127.0.0.1';
 
-// Production: the pinned origin the bundled grafana-server binds to (desktop/docs/server-contract.md).
-// TODO(CUR-28): final pinned port; confirm when the server contract (PR #103) merges.
+// Production: the pinned origin the bundled grafana-server binds to. desktop/docs/server-contract.md is the source
+// of truth for the port; change it there first, then here.
 export const PINNED_GRAFANA_ORIGIN = 'http://127.0.0.1:23300';
 
 // Development only (unpackaged builds): target an already-running local grafana-server. `make run` listens on 3000.

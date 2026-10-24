@@ -55,3 +55,29 @@ After this workflow is on your default branch:
 Names must match what the Actions UI shows for the workflow run (they use the `name:` field on each job).
 
 4. Confirm **Actions** is enabled for the repo. There should be **no** scheduled workflows left under `.github/workflows/` in this fork, so nothing should run on a cron from this directory.
+
+## Merge-ready gate (`desktop/`)
+
+The **PR Babysitter** gets PRs merge-ready and **never merges**. A human merges. A PR is merge-ready only when **all** of the following hold:
+
+1. **Fieldsphere CI is fully green.** Every job in [`.github/workflows/fieldsphere-ci.yml`](../.github/workflows/fieldsphere-ci.yml) passes, including the **`desktop`** job (added in CUR-38, path-filtered to `desktop/**`, installs with `yarn --cwd desktop`).
+   - **PR automation** ([`.github/workflows/pr-commands.yml`](../.github/workflows/pr-commands.yml)) and **Build Go (matrix)** are no-op stubs today. A green result from either is **not** signal. Build Go is being replaced with a real per-OS build in [#102](https://github.com/mmlmike010/grafana/pull/102).
+2. **Bugbot findings are resolved.** Every Cursor Bugbot finding of **medium severity or higher** is fixed, or explicitly triaged in a PR comment that states the reason.
+3. **The PR is not a draft.**
+4. **At least one human approval.**
+5. **Designer sign-off** on chrome PRs (see the path rules below).
+6. **Full Stack sign-off** on session/auth and server-contract PRs (see the path rules below).
+7. **One keeper PR per phase or theme.** Superseded PRs are closed with a comment linking to the keeper.
+
+### Which sign-off applies
+
+The `desktop/` scaffold (CUR-36) is not on `main` yet. The globs below describe the **intended layout** and get updated when the scaffold lands.
+
+A PR needs a given sign-off if it touches **any** matching path or carries the matching label. A PR can need both.
+
+| Sign-off   | Label             | Covers                                                                                                                                                                                                    |
+| ---------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Designer   | `desktop:chrome`  | Window, titlebar, menu, startup and failure pages, icons and installer art: `desktop/resources/**`, `desktop/src/main/window*`, `desktop/resources/startup*`, menu files, and any titlebar or theme files |
+| Full Stack | `desktop:session` | Session/auth and server contract: `desktop/shared/server-contract*`, `desktop/docs/server-contract*`, and session or partition code                                                                       |
+
+Apply the label when opening the PR so reviewers can filter on it. If the paths match but the label is missing, the sign-off still applies.

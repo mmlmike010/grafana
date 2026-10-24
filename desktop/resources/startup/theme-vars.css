@@ -1,0 +1,76 @@
+/*
+ * Generated from GrafanaTheme2 (createTheme in @grafana/data). Do not edit by hand.
+ * Regenerate: see desktop/resources/startup/README.md.
+ */
+
+:root {
+  --gf-typography-html-font-size: 14px;
+  --gf-typography-font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
+  --gf-typography-font-family-monospace: 'Roboto Mono', monospace;
+  --gf-typography-font-weight-regular: 400;
+  --gf-typography-font-weight-medium: 500;
+  --gf-typography-size-sm: 12px;
+  --gf-typography-size-md: 14px;
+  --gf-typography-body-font-size: 1rem;
+  --gf-typography-body-line-height: 1.5714285714285714;
+  --gf-typography-body-letter-spacing: 0.01071em;
+  --gf-typography-body-small-font-size: 0.8571428571428571rem;
+  --gf-typography-body-small-line-height: 1.5;
+  --gf-typography-h3-font-size: 1.5714285714285714rem;
+  --gf-typography-h3-line-height: 1.0909090909090908;
+  --gf-typography-h4-font-size: 1.2857142857142858rem;
+  --gf-typography-h4-line-height: 1.2222222222222223;
+  --gf-spacing-0-5: 4px;
+  --gf-spacing-1: 8px;
+  --gf-spacing-1-5: 12px;
+  --gf-spacing-2: 16px;
+  --gf-spacing-3: 24px;
+  --gf-spacing-4: 32px;
+  --gf-radius-default: 6px;
+  --gf-components-height-md: 32px;
+  --gf-transition-duration-short: 250ms;
+  --gf-transition-easing-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --gf-color-background-canvas: #111217;
+  --gf-color-background-primary: #181b1f;
+  --gf-color-background-secondary: #22252b;
+  --gf-color-text-primary: rgb(204, 204, 220);
+  --gf-color-text-secondary: rgba(204, 204, 220, 0.65);
+  --gf-color-text-max-contrast: #ffffff;
+  --gf-color-border-weak: rgba(204, 204, 220, 0.12);
+  --gf-color-border-medium: rgba(204, 204, 220, 0.2);
+  --gf-color-primary-main: #3d71d9;
+  --gf-color-primary-hover: #3d71d9;
+  --gf-color-primary-contrast-text: #ffffff;
+  --gf-color-secondary-main: #2c2f35;
+  --gf-color-secondary-shade: #383b42;
+  --gf-color-secondary-contrast-text: rgb(204, 204, 220);
+  --gf-color-secondary-border: rgba(204, 204, 220, 0.08);
+  --gf-color-secondary-border-hover: rgba(153, 153, 165, 0.08);
+  --gf-shadow-z1: 0px 1px 2px rgba(1, 4, 9, 0.75);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --gf-color-background-canvas: #fbfbfb;
+  --gf-color-background-primary: #ffffff;
+  --gf-color-background-secondary: #f4f5f5;
+  --gf-color-text-primary: rgba(36, 41, 46, 1);
+  --gf-color-text-secondary: rgba(36, 41, 46, 0.75);
+  --gf-color-text-max-contrast: #000000;
+  --gf-color-border-weak: rgba(36, 41, 46, 0.12);
+  --gf-color-border-medium: rgba(36, 41, 46, 0.3);
+  --gf-color-primary-main: #3871dc;
+  --gf-color-primary-hover: rgb(44, 90, 176);
+  --gf-color-primary-contrast-text: #ffffff;
+  --gf-color-secondary-main: #ececed;
+  --gf-color-secondary-shade: #e1e2e3;
+  --gf-color-secondary-contrast-text: rgba(36, 41, 46, 1);
+  --gf-color-secondary-border: rgba(36, 41, 46, 0.12);
+  --gf-color-secondary-border-hover: rgba(90, 94, 98, 0.12);
+  --gf-shadow-z1: 0px 1px 2px rgba(24, 26, 27, 0.2);
+}

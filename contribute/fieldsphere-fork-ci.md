@@ -9,7 +9,15 @@ This repository fork uses a **minimal GitHub Actions workflow** ([`.github/workf
 - **Backend:** Four **parallel** shards (`./scripts/ci/backend-tests/shard.sh -N1/4` … `-N4/4`), each running `CGO_ENABLED=0 go test -short` on its package subset (~quarter of the tree), so wall time is roughly the slowest shard instead of one long `./...` run. A final job **Backend unit tests (short)** fails the workflow if any shard fails (single check name for branch protection).
 - **Frontend:** `yarn run prettier:check`, `yarn run lint`, then `yarn workspace @grafana/data themes-schema` (generates `schema.generated.json`, which is gitignored but required by `tsc`), then `yarn run typecheck`. Typecheck uses `NODE_OPTIONS=--max-old-space-size=6144` so `tsc` / Nx do not hit the default heap limit on standard runners.
 
-**Build Go (matrix)** is a no-op stub on this fork ([`.github/workflows/build-go-matrix.yml`](../.github/workflows/build-go-matrix.yml)); the full upstream workflow is in [`.github/workflows-upstream-archive/build-go-matrix.yml`](../.github/workflows-upstream-archive/build-go-matrix.yml). Upstream used Grafana org runners that are unavailable here and would fail every PR.
+### Build Go (matrix)
+
+[`.github/workflows/build-go-matrix.yml`](../.github/workflows/build-go-matrix.yml) builds the `grafana` server binary (`make build-go`, i.e. `./pkg/cmd/grafana`) for `linux/amd64`, `linux/arm64`, `darwin/amd64`, `darwin/arm64`, and `windows/amd64`. Desktop packaging consumes these binaries. The upstream version, which uses Grafana org runners, is kept in [`.github/workflows-upstream-archive/build-go-matrix.yml`](../.github/workflows-upstream-archive/build-go-matrix.yml).
+
+- **Build:** Every target is cross-compiled on `ubuntu-latest` with `CGO_ENABLED=0`. This works because SQLite is provided by the pure-Go `modernc.org/sqlite` driver (`pkg/util/sqlite`), and it is the same approach upstream uses.
+- **Smoke:** Each binary is downloaded onto a native runner (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15-intel`, `macos-15`, `windows-2025`), which runs `grafana server -v` and checks that the embedded commit matches.
+- **Artifacts:** `grafana-server-<os>-<arch>`, each containing a single `grafana` (or `grafana.exe`) file. Artifacts are kept for 7 days for PRs and 30 days for pushes and manual runs. Zip artifacts do not preserve the executable bit, so run `chmod +x` after download.
+- **Caches:** The Go module cache and a per-target build cache are restored on every run. They are saved only on pushes to `main` so PRs do not evict `main`'s entries from the repository cache quota.
+- **Triggers:** The workflow runs on every PR, on pushes to `main` / `release-*`, and on `workflow_dispatch`. On PRs, the build and smoke jobs run only when Go-relevant paths change (`pkg/**`, `apps/**`, `**/*.go`, `go.mod`/`go.sum`/`go.work*`, `cue.mod/**`, `Makefile`, `desktop/**`, or the workflow itself). The **All steps completed** job always reports, so it is safe to mark it as a required check.
 
 Fork-local paths (`.cursor/`, `.vscode/`, and root `manifest.json`) are listed in [`.prettierignore`](../.prettierignore) so `prettier:check` matches upstream expectations without formatting IDE tooling.
 
@@ -51,6 +59,7 @@ After this workflow is on your default branch:
 3. Add required checks that match **Fieldsphere CI** job names in GitHub’s picker, for example:
    - `Backend unit tests (short)`
    - `Frontend lint and typecheck`
+   - `All steps completed` (Build Go (matrix))
 
 Names must match what the Actions UI shows for the workflow run (they use the `name:` field on each job).
 

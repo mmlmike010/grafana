@@ -1,0 +1,28 @@
+{
+  "name": "@grafana/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Electron shell that loads the Grafana SPA from a local grafana-server",
+  "license": "AGPL-3.0-only",
+  "main": "dist/main/index.js",
+  "packageManager": "yarn@4.11.0",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "yarn build && yarn electron:install && electron .",
+    "electron:install": "node node_modules/electron/install.js",
+    "lint": "eslint . && node scripts/check-preload-imports.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.preload.json --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "test:root-boundary": "node --test test/root-boundary/*.test.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.32.0",
+    "@types/node": "24.10.1",
+    "electron": "44.9.3",
+    "esbuild": "0.25.8",
+    "eslint": "9.32.0",
+    "globals": "16.3.0",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.56.0"
+  }
+}

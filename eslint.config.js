@@ -96,6 +96,38 @@ const datavizDefaultImportsRestrictions = [
   },
 ];
 
+// Desktop boundary (CUR-39). These use @typescript-eslint/no-restricted-imports rather than the core rule on
+// purpose: flat config replaces (not merges) a rule's options per matching block, so reusing the core
+// `no-restricted-imports` here would silently drop or be dropped by the restrictions configured above.
+// For the same reason the renderer-boundary block repeats the ipcRenderer no-restricted-syntax selectors.
+const ipcRendererMessage = 'Raw ipcRenderer is only allowed in desktop/src/preload/.';
+const desktopIpcRendererRestriction = { name: 'electron', importNames: ['ipcRenderer'], message: ipcRendererMessage };
+const ipcRendererSyntaxRestrictions = [
+  { selector: 'MemberExpression[property.name="ipcRenderer"]', message: ipcRendererMessage },
+  { selector: 'ObjectPattern > Property[key.name="ipcRenderer"]', message: ipcRendererMessage },
+];
+const rendererOnlyMessage =
+  'The Grafana SPA is the Electron renderer: it must stay browser-only. Electron and Node APIs belong in desktop/ (main process).';
+const rendererBannedModules = ['electron', 'fs', 'child_process', 'path', 'os', 'net'];
+const rendererBannedModuleRegex = `/^(node:|(${rendererBannedModules.join('|')})(\\x2F|$))/`;
+
+// Genuinely Node-only code under public/ and packages/ (build configs, codegen, tests run by Jest in Node).
+// Keep this list narrow; anything shipped in the SPA bundle must not be added here.
+const rendererBoundaryNodeOnlyFiles = [
+  ...commonTestIgnores,
+  '**/__tests__/**',
+  'public/app/features/dashboard-scene/serialization/serialization-test-utils.ts',
+  '**/rollup.config.ts',
+  'packages/rollup.config.parts.ts',
+  '**/webpack.config.ts',
+  'packages/grafana-plugin-configs/**',
+  'packages/grafana-eslint-rules/**',
+  'packages/grafana-api-clients/src/generator/**',
+  'packages/grafana-api-clients/src/scripts/**',
+  'packages/grafana-data/scripts/**',
+  'packages/grafana-openapi/src/scripts/**',
+];
+
 /**
  * @type {Array<import('eslint').Linter.Config>}
  */
@@ -113,6 +145,8 @@ module.exports = [
       'coverage/',
       'data/',
       'deployment_tools_config.json',
+      // The Electron shell has its own dependencies and ESLint config: `yarn --cwd desktop lint`
+      'desktop',
       'devenv',
       'e2e-playwright/test-plugins',
       'e2e/tmp',
@@ -656,4 +690,39 @@ module.exports = [
   //     '@grafana/no-plugin-external-import-paths': 'error',
   //   },
   // },
+
+  {
+    name: 'grafana/desktop-no-raw-ipc-renderer',
+    files: ['**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', { paths: [desktopIpcRendererRestriction] }],
+      'no-restricted-syntax': ['error', ...ipcRendererSyntaxRestrictions],
+    },
+  },
+  {
+    name: 'grafana/desktop-renderer-boundary',
+    files: ['public/**/*.{ts,tsx,js,jsx,mjs,cjs}', 'packages/**/*.{ts,tsx,js,jsx,mjs,cjs}'],
+    ignores: rendererBoundaryNodeOnlyFiles,
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: rendererBannedModules.map((name) => ({ name, message: rendererOnlyMessage })),
+          patterns: [
+            { regex: `^(${rendererBannedModules.join('|')})/`, message: rendererOnlyMessage },
+            { regex: '^node:', message: rendererOnlyMessage },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...ipcRendererSyntaxRestrictions,
+        {
+          selector: `CallExpression[callee.name="require"][arguments.0.value=${rendererBannedModuleRegex}]`,
+          message: rendererOnlyMessage,
+        },
+        { selector: `ImportExpression[source.value=${rendererBannedModuleRegex}]`, message: rendererOnlyMessage },
+      ],
+    },
+  },
 ];

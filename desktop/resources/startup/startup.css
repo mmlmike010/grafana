@@ -209,6 +209,7 @@ body {
   color: var(--gf-color-primary-contrast-text);
 }
 
+/* Not primary.shade like @grafana/ui: in dark, shade is below WCAG AA with white text (see README). */
 .button--primary:hover,
 .button--primary:focus {
   background: var(--gf-color-primary-hover);

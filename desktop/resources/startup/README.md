@@ -53,7 +53,7 @@ The buttons are plain links to a custom scheme. Main intercepts them with `will-
 
 | Link                      | Shown on                | Main does                                                     |
 | ------------------------- | ----------------------- | ------------------------------------------------------------- |
-| `grafana-desktop://retry` | `port-in-use`           | Go back to preflight: probe the port again, then spawn.       |
+| `grafana-desktop://retry` | `failed`, `port-in-use` | Go back to preflight: probe the port again, then spawn.       |
 | `grafana-desktop://quit`  | `failed`, `port-in-use` | Quit the app, with the normal graceful shutdown of the child. |
 
 ```js
@@ -73,7 +73,7 @@ Verified with Electron 45 (sandboxed, `contextIsolation: true`): mouse clicks an
 
 Don't register `grafana-desktop` as an OS-level protocol handler. Links on this page only need to reach `will-navigate`, and an OS registration would let any website trigger them.
 
-The contract's state machine also allows Retry from `failed`. This page only offers Quit there, per CUR-37. Adding Retry is a one-line link if the team wants it.
+Main honors `grafana-desktop://retry` from both `failed` (either reason) and `port-in-use`, matching the `failed --> preflight: Retry` transition in the server contract. On `failed`, main kills the child first if it's still running.
 
 ## Copy
 
@@ -87,20 +87,20 @@ The contract's state machine also allows Retry from `failed`. This page only off
 ### `failed`, `reason=exit`
 
 - Page title and headline: **Grafana stopped unexpectedly**
-- Message: Grafana stopped running on its own. The log files can help explain what happened.
+- Message: Something went wrong while Grafana was running. Try again, or check the logs folder for details.
 - Logs folder: `<logs>`
 - Details line: grafana-server exited with code `<code>`. (or signal `<signal>`; hidden when neither is passed)
 - Last output (optional, from `detail`): the last stdout line, in monospace.
-- Buttons: Quit (primary)
+- Buttons: Retry (primary), Quit (secondary)
 
 ### `failed`, `reason=timeout`
 
 - Page title and headline: **Grafana took too long to start**
-- Message: Grafana didn't finish starting in time, so it was stopped. The log files can help explain what happened.
+- Message: Grafana didn't finish starting. Try again, or check the logs folder for details.
 - Logs folder: `<logs>`
 - Details line: grafana-server didn't report ready before the startup time limit.
 - Last output (optional, from `detail`): the last stdout line, in monospace.
-- Buttons: Quit (primary)
+- Buttons: Retry (primary), Quit (secondary)
 
 The timeout copy doesn't name a duration, because the limit is 30 s that resets on migration progress, with a 120 s hard cap.
 

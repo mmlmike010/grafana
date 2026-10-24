@@ -24,7 +24,7 @@ These are decided. This document records them and doesn't reopen them.
 | Shutdown     | SIGTERM → grace → SIGKILL. No orphaned processes. On Windows, a hard tree-kill is accepted for v1; graceful Windows shutdown is a post-v1 follow-up (section 7).                                                                         |
 | Theme signal | The preload watches the theme stylesheet `<link>` in `<head>` and sends `'light' \| 'dark'` on the one-way channel. No `public/` change. CI-4 asserts on the link `href` (section 9).                                                    |
 | Crashes      | Always shown to the user, never silent.                                                                                                                                                                                                  |
-| Instances    | `app.requestSingleInstanceLock()`, so two copies never share one SQLite file.                                                                                                                                                            |
+| Instances    | `app.requestSingleInstanceLock()` plus an exclusive lock on the desktop data dir, so two copies never share one SQLite file. Orphaned servers are found through main's own child record (section 7).                                     |
 
 ## 2. Pinned port: `23300` (approved)
 
@@ -61,7 +61,7 @@ Residual risk: Windows can reserve arbitrary port blocks (`netsh int ipv4 show e
 - Flags ([`pkg/cmd/grafana-server/commands/flags.go#L28-L54`][flags]):
   - `--homepath <installDir>`: the read-only install root that contains `conf/defaults.ini` and `public/`.
   - `--config <userData>/grafana/custom.ini`: the generated ini.
-  - `--pidfile <userData>/grafana/grafana.pid`: optional. Lets main find an orphan left by a crashed previous run ([`server.go#L123`][pidfile]).
+  - `--pidfile` isn't used. Grafana writes it only after migrations, so main doesn't trust it for orphan detection. Main keeps its own child record instead (section 7).
 - **Don't use `--configOverrides` for paths.** It splits on spaces ([`cli.go#L96`][overrides-split]), and macOS `userData` is `~/Library/Application Support/...`. Positional `cfg:` arguments also exit the process if a value contains `=` ([`setting.go#L1134-L1137`][cfg-eq]).
 
 Spawn shape:
@@ -69,8 +69,7 @@ Spawn shape:
 ```text
 <installDir>/bin/grafana server \
   --homepath <installDir> \
-  --config <userData>/grafana/custom.ini \
-  --pidfile <userData>/grafana/grafana.pid
+  --config <userData>/grafana/custom.ini
 ```
 
 ### 3.3 Required keys
@@ -184,8 +183,22 @@ Verified from source. Not run, because no server binary was built for this doc.
 
 - **POSIX:** SIGTERM → wait **10 s** → SIGKILL. Grafana handles SIGTERM/SIGINT with a graceful shutdown bounded at 30 s ([`cli.go#L148-L170`][signals]). Spawn with `detached: true` so the server and its backend plugin processes share a process group. Kill with `process.kill(-pid, sig)` so plugin children don't outlive the server.
 - **Windows:** Node can't deliver a graceful signal. `child.kill('SIGTERM')` terminates the process abruptly. Use a tree-kill (`taskkill /pid <pid> /T /F`) so plugin processes die too. **A hard tree-kill is accepted for v1.** SQLite's default rollback journal (`[database] wal = false`, [L206][ini-wal]) survives it, but in-flight writes are lost. Graceful Windows shutdown is a post-v1 follow-up.
-- **Orphans after an Electron crash:** on the next launch, main reads the `--pidfile`. If that PID is alive and is our `grafana` binary, main tree-kills it before the probe. Otherwise the probe reports `port-in-use` against our own orphan.
 - **Crash after `ready`:** any exit that main didn't request moves to `failed` with a visible screen. There's no silent restart loop in v1.
+
+### Orphaned servers
+
+**Main must not trust Grafana's pidfile.** Grafana writes `--pidfile` in `Server.Init` ([`server.go#L123`][pidfile]), which runs after dependency wiring has already run migrations. `sqlstore.ProvideService` is wired before `server.New` ([`wire_gen.go#L330`][wire-sqlstore], [`#L992`][wire-server-new]). If Electron crashes during first-boot migrations, the orphaned server keeps running with no pidfile.
+
+Rules:
+
+1. **Two locks.** Main keeps `app.requestSingleInstanceLock()`, and also takes an exclusive lock on the desktop data dir, for example `<userData>/grafana/desktop.lock`. The data-dir lock covers anything that bypasses Electron's instance lock, such as a second build or channel pointed at the same `userData`.
+2. **Child record.** Main writes its own record, `<userData>/grafana/child.json` with `{ pid, spawnedAt }`, **the instant `spawn` returns**, before any migration runs. Write to a temp file, then rename. Main deletes the record after a clean exit that it requested.
+3. **Next launch.** After taking both locks and before spawning, main reads the record:
+   - If the pid is alive, is our `grafana` binary with our `--homepath` and `--config` on its command line, and its process start time matches `spawnedAt`, main tree-kills it (as above) and waits for it to exit.
+   - Otherwise the pid is gone or was reused, so main deletes the stale record.
+   - Then main runs the port probe and spawns.
+
+**Why the lock alone isn't enough:** the OS releases a lock held by main when main crashes. The orphaned child keeps running on `grafana.db`, so the next launch gets the lock and would spawn a second server on the same SQLite file. The orphan may still be migrating and may not have bound `23300` yet, so the port-in-use probe won't catch it either. Only the child record, written before migrations start, identifies the orphan.
 
 ## 8. OAuth/SSO redirect URIs
 
@@ -198,7 +211,9 @@ Verified from source. Not run, because no server binary was built for this doc.
 
 **Decision:** the preload watches the theme stylesheet `<link>` in `<head>`. Its `href` contains `build/grafana.dark` or `build/grafana.light`. The preload sends `'light' | 'dark'` to main on the one-way channel. **There is no `public/` change.** **CI-4 asserts on the link `href`.**
 
-- **How:** observe `<head>` child-list mutations. Resolve the mode from the last `link[href*="build/grafana.dark"]` or `link[href*="build/grafana.light"]` present, and send only when the mode changes. `changeTheme` inserts the new link at the top of `<head>` and removes the old one once the new CSS loads ([`theme.ts#L17-L36`][theme-swap]), so both links can briefly coexist. Resolving after removal settles on the new mode.
+- **How:** observe `<head>` child-list mutations. On each change, the preload resolves the mode from the **first** `link[href*="build/grafana.dark"]` or `link[href*="build/grafana.light"]` in `<head>`, and sends only when the mode changes.
+- **Why the first link:** `changeTheme` inserts the new link at `head.firstChild` ([`theme.ts#L35`][theme-insert]). It removes the old link only in the new link's `onload` ([`theme.ts#L21-L34`][theme-onload]; whole block [`#L17-L36`][theme-swap]). So both links briefly coexist, and the first match is always the newest.
+- **`nativeTheme.themeSource` is never set by main in v1.** Setting it overrides `prefers-color-scheme` inside the window. Grafana's `system` theme resolves through that media query ([`getSystemPreferenceTheme`, `packages/grafana-data/src/themes/registry.ts#L102-L106`][system-pref-theme]). Main would set the source, Grafana would follow it, and the preload would report it back, creating a feedback loop. The cached theme from the preload drives only the window `backgroundColor` and the startup page.
 - **Why the link is a stable surface:** `changeTheme` itself finds the old stylesheet by that substring ([`theme.ts#L27`][theme-link]), and the `system` boot path inserts a link with the same asset URLs ([`index.html#L286-L304`][index-system]).
 - **Rejected: watching the `<body>` class.** It doesn't update on a live toggle, and it can carry both classes under `system`. The findings follow.
 
@@ -211,7 +226,8 @@ Verified from source. Not run, because no server binary was built for this doc.
 - **Where it lives:** the startup and failure page is bundled in `desktop/resources/startup/`. Main loads it from disk, **never from `127.0.0.1`**, so it works when the server is down and never shares the SPA's origin.
 - **No scripts** beyond reading a query param, which selects the state to show (for example `booting`, `failed`, or `port-in-use`).
 - **Controls are plain links:** Retry is `<a href="grafana-desktop://retry">`, and Quit is `<a href="grafana-desktop://quit">`.
-- **Scheme handling:** main registers the `grafana-desktop` scheme in-process, so the OS never shows an open-external-app prompt. Retry moves to `preflight` and Quit exits (section 5).
+- **Scheme handling:** main handles `grafana-desktop` only in-process, through `protocol.handle` plus `will-navigate`. **Main never calls `app.setAsDefaultProtocolClient` and never registers the scheme with the OS**, so the OS never shows an open-external-app prompt and other apps can't launch these URLs. Retry moves to `preflight` and Quit exits (section 5).
+- **Detail text:** detail appears only on the `failed` screen. It's the last stdout line, set with `textContent` (never `innerHTML`) and capped at about 200 characters. There's no live progress line in v1.
 - **Honored only on the startup page:** main acts on these two URLs only while the window is showing the bundled startup page. Once the SPA is loaded, main blocks them and does nothing. A dashboard HTML panel or any other SPA content can't quit or restart the app.
 - **IPC stays at v0.** These actions use navigation, not new IPC channels.
 
@@ -284,6 +300,8 @@ These are product questions. They don't block the process manager, because each 
 [overrides-split]: https://github.com/mmlmike010/grafana/blob/main/pkg/cmd/grafana-server/commands/cli.go#L96
 [signals]: https://github.com/mmlmike010/grafana/blob/main/pkg/cmd/grafana-server/commands/cli.go#L148-L170
 [pidfile]: https://github.com/mmlmike010/grafana/blob/main/pkg/server/server.go#L123
+[wire-sqlstore]: https://github.com/mmlmike010/grafana/blob/main/pkg/server/wire_gen.go#L330
+[wire-server-new]: https://github.com/mmlmike010/grafana/blob/main/pkg/server/wire_gen.go#L992
 [server-run]: https://github.com/mmlmike010/grafana/blob/main/pkg/server/server.go#L141-L150
 [migrate]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/sqlstore/sqlstore.go#L71
 [migrator-logger]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/sqlstore/migrator/migrator.go#L107-L110
@@ -315,6 +333,9 @@ These are product questions. They don't block the process manager, because each 
 [themes]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/preference/themes_generated.go#L6-L24
 [themes-system]: https://github.com/mmlmike010/grafana/blob/main/pkg/services/preference/themes_generated.go#L8
 [change-theme]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/services/theme.ts#L9-L51
+[theme-insert]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/services/theme.ts#L35
+[theme-onload]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/services/theme.ts#L21-L34
+[system-pref-theme]: https://github.com/mmlmike010/grafana/blob/main/packages/grafana-data/src/themes/registry.ts#L102-L106
 [theme-swap]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/services/theme.ts#L17-L36
 [theme-link]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/services/theme.ts#L27
 [route-classes]: https://github.com/mmlmike010/grafana/blob/main/public/app/core/navigation/GrafanaRoute.tsx#L94-L102

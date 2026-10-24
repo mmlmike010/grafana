@@ -1,0 +1,11 @@
+# Minimal packaging config; packaging itself (electron-builder dependency, targets, signing) is a later ticket.
+# buildResources holds electron-builder's default-named assets (icon.icns, icon.ico, icons/<size>.png,
+# background.png), which the design asset PR adds.
+appId: com.grafana.desktop
+productName: Grafana
+directories:
+  buildResources: resources
+  output: release
+files:
+  - dist/**/*
+  - package.json

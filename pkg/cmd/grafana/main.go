@@ -22,6 +22,7 @@ var buildBranch = "main"
 var buildstamp string
 
 func main() {
+	var deliberatelyBroken int = "CUR-47 compile failure proof"
 	app := MainApp()
 
 	if err := app.Run(os.Args); err != nil {

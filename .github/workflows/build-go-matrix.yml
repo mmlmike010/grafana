@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - release-*.*.*
+      - cursor/build-go-matrix-broken-test-f3d3
   workflow_dispatch:
 
 concurrency:

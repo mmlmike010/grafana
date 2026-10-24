@@ -10,9 +10,10 @@
     "build": "node scripts/build.mjs",
     "dev": "yarn build && yarn electron:install && electron .",
     "electron:install": "node node_modules/electron/install.js",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/check-preload-imports.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.preload.json --noEmit",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "test:root-boundary": "node --test test/root-boundary/*.test.mjs"
   },
   "devDependencies": {
     "@eslint/js": "9.32.0",

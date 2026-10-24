@@ -1,0 +1,259 @@
+/* Colors come only from theme-vars.css. Do not add literal colors here. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: var(--gf-typography-html-font-size);
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gf-color-background-canvas);
+  color: var(--gf-color-text-primary);
+  font-family: var(--gf-typography-font-family);
+  font-size: var(--gf-typography-body-font-size);
+  font-weight: var(--gf-typography-font-weight-regular);
+  line-height: var(--gf-typography-body-line-height);
+  letter-spacing: var(--gf-typography-body-letter-spacing);
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.startup {
+  width: 100%;
+  max-width: 560px;
+  padding: var(--gf-spacing-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.startup__logo {
+  display: block;
+  width: 64px;
+  height: auto;
+}
+
+.startup__product {
+  margin: var(--gf-spacing-1-5) 0 var(--gf-spacing-4);
+  font-size: var(--gf-typography-h4-font-size);
+  line-height: var(--gf-typography-h4-line-height);
+  font-weight: var(--gf-typography-font-weight-medium);
+  color: var(--gf-color-text-max-contrast);
+}
+
+.startup__state {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.startup__title {
+  margin: 0 0 var(--gf-spacing-2);
+  font-size: var(--gf-typography-h3-font-size);
+  line-height: var(--gf-typography-h3-line-height);
+  font-weight: var(--gf-typography-font-weight-regular);
+}
+
+.startup__title,
+.startup__message {
+  text-wrap: balance;
+}
+
+.startup__message {
+  margin: 0 0 var(--gf-spacing-1);
+}
+
+.startup__detail {
+  max-width: 100%;
+  margin: var(--gf-spacing-1) 0 0;
+  color: var(--gf-color-text-secondary);
+  font-size: var(--gf-typography-body-small-font-size);
+  line-height: var(--gf-typography-body-small-line-height);
+}
+
+.startup__output {
+  display: block;
+  max-width: 100%;
+  margin: var(--gf-spacing-0-5) 0 0;
+  color: var(--gf-color-text-secondary);
+  font-family: var(--gf-typography-font-family-monospace);
+  font-size: var(--gf-typography-body-small-font-size);
+  line-height: var(--gf-typography-body-small-line-height);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.startup__actions {
+  display: flex;
+  gap: var(--gf-spacing-1);
+  justify-content: center;
+  margin-top: var(--gf-spacing-3);
+}
+
+/* Indeterminate bar, after @grafana/ui LoadingBar. */
+.progress {
+  position: relative;
+  width: 240px;
+  height: 2px;
+  margin: var(--gf-spacing-1) 0 var(--gf-spacing-3);
+  overflow: hidden;
+  border-radius: var(--gf-radius-default);
+  background: var(--gf-color-border-weak);
+}
+
+.progress__bar {
+  width: 28%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, var(--gf-color-primary-main) 80.75%, transparent 100%);
+  transform: translateX(-100%);
+  will-change: transform;
+  animation: progress-slide 1800ms linear 300ms infinite;
+}
+
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  85%,
+  100% {
+    transform: translateX(357%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress__bar {
+    width: 100%;
+    transform: none;
+    animation: none;
+    background: var(--gf-color-primary-main);
+  }
+}
+
+.logs {
+  width: 100%;
+  margin-top: var(--gf-spacing-2);
+  text-align: left;
+}
+
+.logs__label {
+  display: block;
+  margin-bottom: var(--gf-spacing-0-5);
+  color: var(--gf-color-text-secondary);
+  font-size: var(--gf-typography-body-small-font-size);
+  line-height: var(--gf-typography-body-small-line-height);
+}
+
+.logs__path {
+  display: block;
+  padding: var(--gf-spacing-1) var(--gf-spacing-1-5);
+  border: 1px solid var(--gf-color-border-weak);
+  border-radius: var(--gf-radius-default);
+  background: var(--gf-color-background-secondary);
+  color: var(--gf-color-text-primary);
+  font-family: var(--gf-typography-font-family-monospace);
+  font-size: var(--gf-typography-body-small-font-size);
+  line-height: var(--gf-typography-body-small-line-height);
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+  cursor: text;
+}
+
+/* Matches @grafana/ui Button size="md", fill="solid". */
+.button {
+  display: inline-flex;
+  align-items: center;
+  height: var(--gf-components-height-md);
+  padding: 0 calc(var(--gf-spacing-2) - 1px);
+  border: 1px solid transparent;
+  border-radius: var(--gf-radius-default);
+  font-family: var(--gf-typography-font-family);
+  font-size: var(--gf-typography-size-md);
+  font-weight: var(--gf-typography-font-weight-medium);
+  line-height: calc(var(--gf-components-height-md) - 2px);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-user-drag: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .button {
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--gf-transition-duration-short);
+    transition-timing-function: var(--gf-transition-easing-in-out);
+  }
+}
+
+.button--primary {
+  background: var(--gf-color-primary-main);
+  color: var(--gf-color-primary-contrast-text);
+}
+
+/* Not primary.shade like @grafana/ui: in dark, shade is below WCAG AA with white text (see README). */
+.button--primary:hover,
+.button--primary:focus {
+  background: var(--gf-color-primary-hover);
+  color: var(--gf-color-primary-contrast-text);
+}
+
+.button--primary:hover {
+  box-shadow: var(--gf-shadow-z1);
+}
+
+.button--secondary {
+  background: var(--gf-color-secondary-main);
+  border-color: var(--gf-color-secondary-border);
+  color: var(--gf-color-secondary-contrast-text);
+}
+
+.button--secondary:hover,
+.button--secondary:focus {
+  background: var(--gf-color-secondary-shade);
+  color: var(--gf-color-secondary-contrast-text);
+}
+
+.button--secondary:hover {
+  border-color: var(--gf-color-secondary-border-hover);
+  box-shadow: var(--gf-shadow-z1);
+}
+
+.button--primary:active {
+  background: var(--gf-color-primary-main);
+}
+
+.button--secondary:active {
+  background: var(--gf-color-secondary-main);
+}
+
+.button:focus-visible {
+  outline: 2px dotted transparent;
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--gf-color-background-canvas),
+    0 0 0 4px var(--gf-color-primary-main);
+}
+
+.button:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}

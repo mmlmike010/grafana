@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Starting Grafana</title>
+    <link rel="stylesheet" href="theme-vars.css" />
+    <link rel="stylesheet" href="startup.css" />
+    <script src="startup.js"></script>
+  </head>
+  <body>
+    <main class="startup">
+      <img class="startup__logo" src="grafana_icon.svg" alt="" width="64" height="67" />
+      <p class="startup__product">Grafana</p>
+
+      <section class="startup__state" data-state="booting" aria-labelledby="booting-title">
+        <h1 class="startup__title" id="booting-title">Starting Grafana</h1>
+        <div class="progress" role="progressbar" aria-labelledby="booting-title">
+          <div class="progress__bar"></div>
+        </div>
+        <div aria-live="polite">
+          <p class="startup__message">This usually takes a few seconds.</p>
+          <p class="startup__message" id="booting-slow" hidden>
+            The first launch can take a couple of minutes while the database is set up.
+          </p>
+        </div>
+      </section>
+
+      <section class="startup__state" data-state="failed" aria-labelledby="failed-title" hidden>
+        <h1 class="startup__title" id="failed-title">
+          <span data-reason="exit">Grafana stopped unexpectedly</span>
+          <span data-reason="timeout" hidden>Grafana took too long to start</span>
+        </h1>
+        <p class="startup__message" data-reason="exit">
+          Something went wrong while Grafana was running. Try again, or check the logs folder for details.
+        </p>
+        <p class="startup__message" data-reason="timeout" hidden>
+          It may still be setting up the database. Try again, or check the logs folder for details.
+        </p>
+        <div class="logs" id="failed-logs" hidden>
+          <span class="logs__label" id="failed-logs-label">Logs folder</span>
+          <code class="logs__path" id="failed-logs-path" aria-labelledby="failed-logs-label"></code>
+        </div>
+        <p class="startup__detail" data-reason="exit" id="failed-exit-detail" hidden>
+          grafana-server exited with <span id="failed-exit-status"></span>.
+        </p>
+        <p class="startup__detail" data-reason="timeout" hidden>
+          grafana-server didn't report ready before the startup time limit.
+        </p>
+        <code class="startup__output" id="failed-output" hidden></code>
+        <div class="startup__actions">
+          <a class="button button--primary" href="grafana-desktop://retry">Retry</a>
+          <a class="button button--secondary" href="grafana-desktop://quit">Quit</a>
+        </div>
+      </section>
+
+      <section class="startup__state" data-state="port-in-use" aria-labelledby="port-title" hidden>
+        <h1 class="startup__title" id="port-title">Port <span data-port>23300</span> is already in use</h1>
+        <p class="startup__message">
+          Another copy of Grafana or a different app may be using it. Close that app, then select Retry.
+        </p>
+        <p class="startup__detail">grafana-server needs 127.0.0.1:<span data-port>23300</span> to start.</p>
+        <div class="startup__actions">
+          <a class="button button--primary" href="grafana-desktop://retry">Retry</a>
+          <a class="button button--secondary" href="grafana-desktop://quit">Quit</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -9358,8 +9358,11 @@
     "title": "Enterprise"
   },
   "gettingstarted": {
+    "card-status": {
+      "complete": "Complete",
+      "up-next": "Up next"
+    },
     "docs-card": {
-      "complete": "complete",
       "learn-how": "Learn how in the docs"
     },
     "getting-started": {
@@ -9368,8 +9371,8 @@
       "checking-completed-setup-steps": "Checking completed setup steps",
       "remove-this-panel": "Remove this panel"
     },
-    "tutorial-card": {
-      "complete": "complete"
+    "step": {
+      "progress": "{{completed}} of {{total}} complete"
     }
   },
   "gops": {

@@ -99,9 +99,6 @@ export class GettingStarted extends PureComponent<PanelProps, State> {
           </div>
         ) : (
           <>
-            <Button size="sm" fill="text" className={styles.dismiss} onClick={this.dismiss}>
-              <Trans i18nKey="gettingstarted.getting-started.remove-this-panel">Remove this panel</Trans>
-            </Button>
             {currentStep === steps.length - 1 && (
               <Button
                 className={cx(styles.backForwardButtons, styles.previous)}
@@ -112,7 +109,14 @@ export class GettingStarted extends PureComponent<PanelProps, State> {
               />
             )}
             <div className={styles.content}>
-              <Step step={step} />
+              <Step
+                step={step}
+                actions={
+                  <Button size="sm" fill="text" onClick={this.dismiss}>
+                    <Trans i18nKey="gettingstarted.getting-started.remove-this-panel">Remove this panel</Trans>
+                  </Button>
+                }
+              />
             </div>
             {currentStep < steps.length - 1 && (
               <Button
@@ -139,18 +143,20 @@ const getStyles = stylesFactory(() => {
     container: css({
       display: 'flex',
       flexDirection: 'column',
+      justifyContent: 'center',
       height: '100%',
-      backgroundSize: 'cover',
-      padding: `${theme.spacing(4)} ${theme.spacing(2)} 0`,
+      position: 'relative',
+      padding: theme.spacing(1.5, 2),
+      borderRadius: theme.shape.radius.default,
+      backgroundImage: `linear-gradient(180deg, ${theme.colors.primary.transparent} 0%, transparent 55%)`,
     }),
     content: css({
       label: 'content',
       display: 'flex',
-      justifyContent: 'center',
+      padding: theme.spacing(0, 4),
 
-      [theme.breakpoints.down('xxl')]: {
-        marginLeft: theme.spacing(3),
-        justifyContent: 'flex-start',
+      [theme.breakpoints.down('md')]: {
+        padding: theme.spacing(0, 3),
       },
     }),
     header: css({
@@ -199,10 +205,6 @@ const getStyles = stylesFactory(() => {
       [theme.breakpoints.down('md')]: {
         right: 0,
       },
-    }),
-    dismiss: css({
-      alignSelf: 'flex-end',
-      marginBottom: theme.spacing(1),
     }),
     loading: css({
       display: 'flex',

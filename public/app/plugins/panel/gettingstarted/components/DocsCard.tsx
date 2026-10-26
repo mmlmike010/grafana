@@ -1,20 +1,22 @@
 import { css, cx } from '@emotion/css';
 
 import { type GrafanaTheme2 } from '@grafana/data';
-import { Trans, t } from '@grafana/i18n';
+import { Trans } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
 import { TextLink, useStyles2 } from '@grafana/ui';
 
 import { type Card } from '../types';
 
+import { CardStatus } from './CardStatus';
 import { cardContent, cardStyle } from './sharedStyles';
 
 interface Props {
   card: Card;
+  isNext: boolean;
 }
 
-export const DocsCard = ({ card }: Props) => {
-  const styles = useStyles2(getStyles, card.done);
+export const DocsCard = ({ card, isNext }: Props) => {
+  const styles = useStyles2(getStyles, card.done, isNext);
 
   return (
     <div className={styles.card}>
@@ -24,9 +26,7 @@ export const DocsCard = ({ card }: Props) => {
           className={styles.url}
           onClick={() => reportInteraction('grafana_getting_started_docs', { title: card.title, link: card.href })}
         >
-          <div className={styles.heading}>
-            {card.done ? t('gettingstarted.docs-card.complete', 'complete') : card.heading}
-          </div>
+          <CardStatus label={card.heading} complete={card.done} isNext={isNext} />
           <h4 className={styles.title}>{card.title}</h4>
         </a>
       </div>
@@ -44,17 +44,17 @@ export const DocsCard = ({ card }: Props) => {
   );
 };
 
-const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
+const getStyles = (theme: GrafanaTheme2, complete: boolean, isNext: boolean) => {
   return {
     card: css({
-      ...cardStyle(theme, complete),
+      ...cardStyle(theme, complete, isNext),
 
       display: 'flex',
       flexDirection: 'column',
-      minWidth: '230px',
+      width: '230px',
 
       [theme.breakpoints.down('md')]: {
-        minWidth: '192px',
+        width: '192px',
       },
     }),
     content: css({
@@ -64,16 +64,13 @@ const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
         backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.03),
       },
     }),
-    heading: css({
-      textTransform: 'uppercase',
-      color: complete ? theme.v1.palette.blue95 : '#FFB357',
-      marginBottom: theme.spacing(2),
-    }),
     title: css({
+      marginTop: theme.spacing(1.5),
       marginBottom: theme.spacing(2),
+      color: 'inherit',
     }),
     url: css({
-      display: 'inline-block',
+      display: 'block',
       height: '100%',
     }),
     learnUrl: css({

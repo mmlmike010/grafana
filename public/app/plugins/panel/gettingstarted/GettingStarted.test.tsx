@@ -42,6 +42,19 @@ describe.each([
     expect(dashboardStepLink).toHaveTextContent(/complete/i);
   });
 
+  it('shows progress and highlights the next incomplete step', async () => {
+    const props = getPanelProps({});
+    render(<GettingStarted {...props} />);
+
+    const progress = await screen.findByRole('progressbar', { name: '2 of 3 complete' });
+    expect(progress).toHaveAttribute('aria-valuenow', '2');
+    expect(progress).toHaveAttribute('aria-valuemax', '3');
+
+    const tutorialLink = screen.getByRole('link', { name: /grafana fundamentals/i });
+    expect(tutorialLink).toHaveTextContent(/up next/i);
+    expect(screen.getAllByText(/up next/i)).toHaveLength(1);
+  });
+
   it('allows navigating between steps', async () => {
     const props = getPanelProps({});
     const { user } = render(<GettingStarted {...props} />);

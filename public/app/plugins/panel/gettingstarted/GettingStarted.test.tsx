@@ -42,6 +42,20 @@ describe.each([
     expect(dashboardStepLink).toHaveTextContent(/complete/i);
   });
 
+  it('shows progress and highlights the next incomplete step', async () => {
+    const props = getPanelProps({});
+    render(<GettingStarted {...props} />);
+
+    expect(await screen.findByText(/of .* complete/i)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+
+    // With a metrics datasource present and dashboards found by the mock searcher,
+    // the tutorial card (Grafana fundamentals) is typically the first incomplete step.
+    const nextStep = await screen.findByTestId('getting-started-next-step');
+    expect(nextStep).toHaveTextContent(/up next/i);
+    expect(nextStep).toHaveTextContent(/grafana fundamentals/i);
+  });
+
   it('allows navigating between steps', async () => {
     const props = getPanelProps({});
     const { user } = render(<GettingStarted {...props} />);

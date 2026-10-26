@@ -2,20 +2,21 @@ import { css } from '@emotion/css';
 import { type MouseEvent } from 'react';
 
 import { type GrafanaTheme2, store } from '@grafana/data';
-import { t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
 import { useStyles2 } from '@grafana/ui';
 
 import { type TutorialCardType } from '../types';
 
+import { CardStatus } from './CardStatus';
 import { cardContent, cardStyle } from './sharedStyles';
 
 interface Props {
   card: TutorialCardType;
+  isNext: boolean;
 }
 
-export const TutorialCard = ({ card }: Props) => {
-  const styles = useStyles2(getStyles, card.done);
+export const TutorialCard = ({ card, isNext }: Props) => {
+  const styles = useStyles2(getStyles, card.done, isNext);
 
   return (
     <a
@@ -26,10 +27,8 @@ export const TutorialCard = ({ card }: Props) => {
       onClick={(event: MouseEvent<HTMLAnchorElement>) => handleTutorialClick(event, card)}
     >
       <div className={cardContent}>
-        <div className={styles.type}>{card.type}</div>
-        <div className={styles.heading}>
-          {card.done ? t('gettingstarted.tutorial-card.complete', 'complete') : card.heading}
-        </div>
+        <CardStatus label={card.type} complete={card.done} isNext={isNext} />
+        <div className={styles.heading}>{card.heading}</div>
         <h4 className={styles.cardTitle}>{card.title}</h4>
         <div className={styles.info}>{card.info}</div>
       </div>
@@ -45,43 +44,39 @@ const handleTutorialClick = (event: MouseEvent<HTMLAnchorElement>, card: Tutoria
   reportInteraction('grafana_getting_started_tutorial', { title: card.title });
 };
 
-const getStyles = (theme: GrafanaTheme2, complete: boolean) => {
+const getStyles = (theme: GrafanaTheme2, complete: boolean, isNext: boolean) => {
   return {
     card: css({
-      ...cardStyle(theme, complete),
+      ...cardStyle(theme, complete, isNext),
       width: '460px',
-      minWidth: '460px',
 
       '&:hover': {
         backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.03),
       },
 
       [theme.breakpoints.down('xl')]: {
-        minWidth: '368px',
+        width: '368px',
       },
 
       [theme.breakpoints.down('lg')]: {
-        minWidth: '272px',
+        width: '272px',
       },
     }),
-    type: css({
-      color: theme.colors.primary.text,
-      textTransform: 'uppercase',
-    }),
     heading: css({
+      ...theme.typography.bodySmall,
       textTransform: 'uppercase',
-      color: theme.colors.primary.text,
+      color: complete ? theme.colors.text.secondary : theme.colors.primary.text,
+      marginTop: theme.spacing(0.5),
       marginBottom: theme.spacing(1),
     }),
     cardTitle: css({
-      marginBottom: theme.spacing(2),
+      marginBottom: theme.spacing(1),
+      color: 'inherit',
     }),
     info: css({
-      marginBottom: theme.spacing(2),
-    }),
-    status: css({
-      display: 'flex',
-      justifyContent: 'flex-end',
+      ...theme.typography.bodySmall,
+      color: theme.colors.text.secondary,
+      marginBottom: theme.spacing(1),
     }),
   };
 };
